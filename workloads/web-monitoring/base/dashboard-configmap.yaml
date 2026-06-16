@@ -1,0 +1,323 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-slo-dashboard
+  labels:
+    app.kubernetes.io/name: web
+    app.kubernetes.io/part-of: p2-w10-lab
+    grafana_dashboard: "1"
+data:
+  web-slo-dashboard.json: |-
+    {
+      "uid": "web-slo",
+      "title": "Web SLO — HTTP Availability",
+      "tags": ["slo", "web", "p2-w10-lab"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 6,
+      "refresh": "30s",
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "templating": {
+        "list": [
+          {
+            "name": "datasource",
+            "type": "datasource",
+            "label": "Datasource",
+            "query": "prometheus",
+            "current": {
+              "selected": true,
+              "text": "Prometheus",
+              "value": "Prometheus"
+            },
+            "refresh": 1
+          },
+          {
+            "name": "namespace",
+            "type": "custom",
+            "label": "Namespace",
+            "query": "demo",
+            "current": {
+              "selected": true,
+              "text": "demo",
+              "value": "demo"
+            }
+          },
+          {
+            "name": "service",
+            "type": "custom",
+            "label": "Service",
+            "query": "web,web-canary",
+            "current": {
+              "selected": true,
+              "text": "web",
+              "value": "web"
+            }
+          }
+        ]
+      },
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Success Rate (1h)",
+          "description": "Fraction of user HTTP requests returning non-5xx over 1h. Excludes /api/health and /metrics (synthetic traffic).",
+          "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 0.999},
+                  {"color": "green", "value": 0.9999}
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "textMode": "value_and_name"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",status_code!~\"5..\",route!=\"/api/health\",route!=\"/metrics\"}[1h])) / sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",route!=\"/api/health\",route!=\"/metrics\"}[1h]))",
+              "legendFormat": "success rate 1h",
+              "datasource": {"type": "prometheus", "uid": "$datasource"}
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Error Budget Remaining (30d)",
+          "description": "Remaining error budget for 99.9% HTTP availability SLO over 30 days. 100% = no errors. 0% = budget exhausted. Computed from 30d request counts so it reflects actual budget consumption over window.",
+          "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 0.25},
+                  {"color": "green", "value": 0.5}
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "textMode": "value_and_name"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "clamp_min(1 - ((sum(increase(http_requests_total{namespace=\"$namespace\",service=\"$service\",status_code=~\"5..\",route!=\"/api/health\",route!=\"/metrics\"}[30d])) / sum(increase(http_requests_total{namespace=\"$namespace\",service=\"$service\",route!=\"/api/health\",route!=\"/metrics\"}[30d]))) / 0.001), 0)",
+              "legendFormat": "budget remaining 30d",
+              "datasource": {"type": "prometheus", "uid": "$datasource"}
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "SLO",
+          "description": "SLO: 99.9% of user HTTP requests must succeed (non-5xx). Error budget = 0.1% of requests over 30 days. Health checks and /metrics scrape excluded.",
+          "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "string",
+              "mappings": [
+                {"type": "value", "options": {"1": {"text": "99.9% success rate"}}}
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "blue", "value": null}
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "textMode": "value_and_name"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "vector(1)",
+              "legendFormat": "HTTP availability SLO",
+              "datasource": {"type": "prometheus", "uid": "$datasource"}
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "5xx Error Rate vs Burn Thresholds",
+          "description": "5xx error rate (user traffic only). Derived as 1 - success_rate so it returns 0 (not No Data) when there are no errors.",
+          "gridPos": {"h": 9, "w": 12, "x": 0, "y": 8},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "custom": {
+                "lineWidth": 2
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {"id": "byName", "options": "fast-burn threshold (1.44%)"},
+                "properties": [{"id": "custom.lineStyle", "value": {"dash": [6, 3], "fill": "dash"}}, {"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+              },
+              {
+                "matcher": {"id": "byName", "options": "slow-burn threshold (0.6%)"},
+                "properties": [{"id": "custom.lineStyle", "value": {"dash": [6, 3], "fill": "dash"}}, {"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}]
+              }
+            ]
+          },
+          "options": {"legend": {"displayMode": "table", "placement": "bottom"}},
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "1 - sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",status_code!~\"5..\",route!=\"/api/health\",route!=\"/metrics\"}[5m])) / sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",route!=\"/api/health\",route!=\"/metrics\"}[5m]))",
+              "legendFormat": "error rate 5m",
+              "datasource": {"type": "prometheus", "uid": "$datasource"}
+            },
+            {
+              "refId": "B",
+              "expr": "1 - sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",status_code!~\"5..\",route!=\"/api/health\",route!=\"/metrics\"}[1h])) / sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",route!=\"/api/health\",route!=\"/metrics\"}[1h]))",
+              "legendFormat": "error rate 1h",
+              "datasource": {"type": "prometheus", "uid": "$datasource"}
+            },
+            {
+              "refId": "C",
+              "expr": "1 - sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",status_code!~\"5..\",route!=\"/api/health\",route!=\"/metrics\"}[6h])) / sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",route!=\"/api/health\",route!=\"/metrics\"}[6h]))",
+              "legendFormat": "error rate 6h",
+              "datasource": {"type": "prometheus", "uid": "$datasource"}
+            },
+            {
+              "refId": "D",
+              "expr": "vector(0.0144)",
+              "legendFormat": "fast-burn threshold (1.44%)",
+              "datasource": {"type": "prometheus", "uid": "$datasource"}
+            },
+            {
+              "refId": "E",
+              "expr": "vector(0.006)",
+              "legendFormat": "slow-burn threshold (0.6%)",
+              "datasource": {"type": "prometheus", "uid": "$datasource"}
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Burn Rate vs Thresholds",
+          "description": "Error budget burn rate. 1x = consuming budget at exactly the 30-day rate. Alert fires at 14.4x (fast) and 6x (slow). Returns 0 when no errors.",
+          "gridPos": {"h": 9, "w": 12, "x": 12, "y": 8},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "custom": {
+                "lineWidth": 2
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {"id": "byName", "options": "fast-burn alert (14.4x)"},
+                "properties": [{"id": "custom.lineStyle", "value": {"dash": [6, 3], "fill": "dash"}}, {"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+              },
+              {
+                "matcher": {"id": "byName", "options": "slow-burn alert (6x)"},
+                "properties": [{"id": "custom.lineStyle", "value": {"dash": [6, 3], "fill": "dash"}}, {"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}]
+              }
+            ]
+          },
+          "options": {"legend": {"displayMode": "table", "placement": "bottom"}},
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "(1 - sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",status_code!~\"5..\",route!=\"/api/health\",route!=\"/metrics\"}[5m])) / sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",route!=\"/api/health\",route!=\"/metrics\"}[5m]))) / 0.001",
+              "legendFormat": "burn rate 5m",
+              "datasource": {"type": "prometheus", "uid": "$datasource"}
+            },
+            {
+              "refId": "B",
+              "expr": "(1 - sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",status_code!~\"5..\",route!=\"/api/health\",route!=\"/metrics\"}[1h])) / sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",route!=\"/api/health\",route!=\"/metrics\"}[1h]))) / 0.001",
+              "legendFormat": "burn rate 1h",
+              "datasource": {"type": "prometheus", "uid": "$datasource"}
+            },
+            {
+              "refId": "C",
+              "expr": "(1 - sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",status_code!~\"5..\",route!=\"/api/health\",route!=\"/metrics\"}[6h])) / sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",route!=\"/api/health\",route!=\"/metrics\"}[6h]))) / 0.001",
+              "legendFormat": "burn rate 6h",
+              "datasource": {"type": "prometheus", "uid": "$datasource"}
+            },
+            {
+              "refId": "D",
+              "expr": "vector(14.4)",
+              "legendFormat": "fast-burn alert (14.4x)",
+              "datasource": {"type": "prometheus", "uid": "$datasource"}
+            },
+            {
+              "refId": "E",
+              "expr": "vector(6)",
+              "legendFormat": "slow-burn alert (6x)",
+              "datasource": {"type": "prometheus", "uid": "$datasource"}
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Stable vs Canary Request Rate",
+          "description": "Compare live request volume between stable and canary services during rollout verification. Canary analysis expects at least 0.1 req/s of real traffic before error-rate samples are considered valid.",
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 17},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "min": 0,
+              "custom": {
+                "lineWidth": 2
+              }
+            },
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "table", "placement": "bottom"}},
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(rate(http_requests_total{namespace=\"$namespace\",service=\"web\",route!=\"/api/health\",route!=\"/metrics\"}[1m]))",
+              "legendFormat": "stable web",
+              "datasource": {"type": "prometheus", "uid": "$datasource"}
+            },
+            {
+              "refId": "B",
+              "expr": "sum(rate(http_requests_total{namespace=\"$namespace\",service=\"web-canary\",route!=\"/api/health\",route!=\"/metrics\"}[1m]))",
+              "legendFormat": "canary web-canary",
+              "datasource": {"type": "prometheus", "uid": "$datasource"}
+            }
+          ]
+        }
+      ]
+    }

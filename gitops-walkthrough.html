@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitOps & Observability: Kiến trúc & Chi tiết Mã nguồn w10-lab</title>
+  
+  <!-- Import Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      /* Layout surfaces */
+      --bg:          #fafbfc;        /* Page background */
+      --bg-card:     #ffffff;        /* Card / component background */
+      --bg-code:     #0f172a;        /* Code block background (dark) */
+      --border:      #e2e8f0;        /* Dividers, card borders */
+
+      /* Typography */
+      --text:        #1e293b;        /* Primary body text */
+      --text-muted:  #475569;        /* Secondary / explanatory text */
+      --text-faint:  #94a3b8;        /* Footer, labels, timestamps */
+
+      /* Brand accents */
+      --accent:      #f59e0b;        /* Primary amber — links, active states */
+      --accent-2:    #fb923c;        /* Secondary orange — gradient pair */
+      --accent-blue: #3b82f6;        /* Info / neutral technical callouts */
+      --accent-green:#22c55e;        /* Success, safe states */
+      --accent-red:  #ef4444;        /* Warnings, failures, critical paths */
+
+      /* Gradients */
+      --gradient-warm: linear-gradient(135deg, #f59e0b, #fb923c);
+      --gradient-text: linear-gradient(135deg, #f59e0b, #ef4444); /* For display headings */
+
+      /* Typography stack */
+      --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: 100vh;
+    }
+
+    /* Sticky Sidebar Navigation */
+    nav {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      padding: 32px 0;
+      background: var(--bg-card);
+      z-index: 10;
+    }
+
+    .nav-logo {
+      padding: 0 24px;
+      margin-bottom: 32px;
+    }
+
+    .nav-logo h1 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      margin: 0 0 4px 0;
+      background: var(--gradient-text);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-logo p {
+      font-size: 0.7rem;
+      color: var(--text-faint);
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-group {
+      padding: 16px 24px 6px 24px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    nav a {
+      display: block;
+      padding: 8px 24px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transition: all 0.15s ease-in-out;
+      font-weight: 500;
+    }
+
+    nav a:hover, nav a.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      background: rgba(245, 158, 11, 0.06);
+      font-weight: 600;
+    }
+
+    /* Main Content Area */
+    main {
+      padding: 48px 64px;
+      max-width: 1000px;
+    }
+
+    section {
+      margin-bottom: 64px;
+      scroll-margin-top: 24px;
+    }
+
+    /* Typography */
+    h1, h2, h3, h4 {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    p.lead {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      margin-bottom: 40px;
+      line-height: 1.7;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      margin: 0;
+    }
+
+    h3 {
+      font-size: 1.15rem;
+      margin-top: 32px;
+      margin-bottom: 12px;
+    }
+
+    p {
+      margin-top: 0;
+      margin-bottom: 16px;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Section Header */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .icon-amber  { background: rgba(245, 158, 11, 0.12); }
+    .icon-blue   { background: rgba(59, 130, 246, 0.12); }
+    .icon-green  { background: rgba(34, 197, 94, 0.12);  }
+    .icon-red    { background: rgba(239, 68, 68, 0.12);  }
+
+    /* Code Block Styling */
+    .code-block-container {
+      margin-bottom: 24px;
+    }
+    
+    .code-title {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      padding: 6px 12px;
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
+      display: inline-block;
+    }
+
+    .code-block {
+      background: var(--bg-code);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: 8px;
+      padding: 16px 18px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: #e2e8f0;
+      line-height: 1.65;
+      overflow-x: auto;
+      white-space: pre;
+      margin: 0;
+    }
+    
+    .code-title + .code-block {
+      border-top-left-radius: 0;
+    }
+
+    /* Token Classes for Custom Highlighting */
+    .cmt { color: #64748b; font-style: italic; }   /* Comments */
+    .kw  { color: #f59e0b; font-weight: 600; }   /* Keys, keywords → amber */
+    .str { color: #34d399; }                       /* String values → green */
+    .fn  { color: #60a5fa; }                       /* Field names → blue */
+    .val { color: #f472b6; }                       /* Booleans, numbers, markers → pink */
+    .out { color: #94a3b8; }                       /* Output */
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.85em;
+      background: rgba(51, 65, 85, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #0f172a;
+    }
+
+    /* Stepper Styling */
+    .stepper {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 32px 0;
+    }
+
+    .step-item {
+      display: flex;
+      gap: 16px;
+    }
+
+    .step-line {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 32px;
+      flex-shrink: 0;
+    }
+
+    .step-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--gradient-warm);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-connector {
+      width: 2px;
+      flex: 1;
+      min-height: 28px;
+      background: var(--border);
+      margin: 4px 0;
+    }
+
+    .step-content {
+      padding-bottom: 24px;
+    }
+
+    .step-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-desc {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* Badges / Tags */
+    .badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-amber { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+    .badge-blue  { background: rgba(59, 130, 246, 0.15);  color: #1d4ed8; }
+    .badge-green { background: rgba(34, 197, 94, 0.15);   color: #15803d; }
+    .badge-red   { background: rgba(239, 68, 68, 0.15);   color: #b91c1c; }
+
+    /* Tables & Decision Matrix */
+    .table-container {
+      overflow-x: auto;
+      margin-bottom: 24px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+      background: var(--bg-card);
+    }
+
+    th {
+      text-align: left;
+      padding: 12px 16px;
+      background: #0f172a;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 2px solid rgba(245, 158, 11, 0.3);
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      vertical-align: top;
+      line-height: 1.5;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(245, 158, 11, 0.02);
+    }
+
+    /* Callout Boxes */
+    .callout {
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+      font-size: 0.875rem;
+      border-left: 4px solid;
+    }
+
+    .callout p {
+      margin: 0;
+      line-height: 1.6;
+    }
+    
+    .callout p strong {
+      display: inline-block;
+      margin-bottom: 4px;
+    }
+
+    .callout-red    { background: rgba(239, 68, 68, 0.06);   border-color: var(--accent-red);   color: #7f1d1d; }
+    .callout-amber  { background: rgba(245, 158, 11, 0.06);  border-color: var(--accent);       color: #78350f; }
+    .callout-blue   { background: rgba(59, 130, 246, 0.06);  border-color: var(--accent-blue);  color: #1e3a5f; }
+    .callout-green  { background: rgba(34, 197, 94, 0.06);   border-color: var(--accent-green); color: #14532d; }
+
+    /* Architecture Diagram styling */
+    .diagram-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 32px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+
+    .diagram-svg {
+      width: 100%;
+      max-width: 760px;
+      height: auto;
+    }
+
+    /* Custom classes for inline documentation variables */
+    .path-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: #64748b;
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar Navigation -->
+  <nav>
+    <div class="nav-logo">
+      <h1>GitOps & Observability</h1>
+      <p>w10-lab Walkthrough</p>
+    </div>
+    
+    <div class="nav-group">Tổng quan kiến trúc</div>
+    <a href="#kientruc" class="active">Sơ đồ hệ thống</a>
+    <a href="#gitops-pattern">Mẫu thiết kế App-of-Apps</a>
+    
+    <div class="nav-group">Cấu hình GitOps</div>
+    <a href="#bootstrap-root">Root & Children App</a>
+    <a href="#appproject-rbac">AppProject & Kháng Trạng Thái</a>
+    <a href="#sync-waves">Thứ tự Sync Waves</a>
+    
+    <div class="nav-group">Workloads & Kustomize</div>
+    <a href="#kustomize-web">Kế thừa Base & Overlays</a>
+    <a href="#canary-rollout">Argo Rollouts & Canary Strategy</a>
+    
+    <div class="nav-group">Giám Sát & SLO</div>
+    <a href="#monitoring-stack">Prometheus & Grafana Stack</a>
+    <a href="#web-observability">ServiceMonitor & SLO Rules</a>
+    <a href="#slo-math">Toán Học Đằng Sau SLO Alerts</a>
+    <a href="#grafana-dashboard">Grafana Dashboard Config</a>
+    
+    <div class="nav-group">Vận Hành & Drift</div>
+    <a href="#drift-prevention">Drift & Nguyên Tắc Tự Lành</a>
+  </nav>
+
+  <!-- Main Content -->
+  <main>
+    <section id="title-section">
+      <h1>Kiến Trúc GitOps & Giám Sát Tự Động</h1>
+      <p class="lead">Walkthrough chi tiết cấu trúc thư mục, tệp cấu hình YAML, và nguyên lý hoạt động của kho lưu trữ GitOps <code>w10-gitops</code>. Tài liệu đi sâu vào cách ArgoCD triển khai tài nguyên theo thứ tự (Sync Waves) và cách hệ thống giám sát tự động phát hiện, cảnh báo chỉ số SLO.</p>
+    </section>
+
+    <!-- SECTION: Architecture Sơ đồ -->
+    <section id="kientruc">
+      <div class="section-header">
+        <div class="section-icon icon-amber">📐</div>
+        <h2>Sơ đồ Hệ thống GitOps & Observability</h2>
+      </div>
+      <p>Sơ đồ dưới đây minh họa dòng dữ liệu từ khi mã nguồn thay đổi trên kho lưu trữ Git (GitHub), cách ArgoCD Controller tiếp nhận và đồng bộ (Reconcile) xuống Kubernetes Cluster, đồng thời kích hoạt các luồng tự động cấu hình giám sát thông qua Prometheus Operator:</p>
+      
+      <div class="diagram-card">
+        <svg class="diagram-svg" viewBox="0 0 800 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Background Grid & Accents -->
+          <rect width="800" height="420" rx="8" fill="#fafbfc"/>
+          
+          <!-- Git Repo Box -->
+          <rect x="20" y="150" width="120" height="80" rx="8" fill="#0f172a" stroke="#e2e8f0" stroke-width="2"/>
+          <text x="80" y="190" fill="#f59e0b" font-family="Plus Jakarta Sans" font-weight="bold" font-size="14" text-anchor="middle">Git Repository</text>
+          <text x="80" y="210" fill="#94a3b8" font-family="Plus Jakarta Sans" font-size="10" text-anchor="middle">w10-gitops (main)</text>
+          
+          <!-- ArgoCD Root App -->
+          <rect x="200" y="150" width="140" height="80" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 2"/>
+          <text x="270" y="185" fill="#1e293b" font-family="Plus Jakarta Sans" font-weight="bold" font-size="13" text-anchor="middle">ArgoCD Root App</text>
+          <text x="270" y="205" fill="#f59e0b" font-family="JetBrains Mono" font-size="10" text-anchor="middle">w10-lab-root</text>
+          
+          <!-- Children Apps (App of Apps) -->
+          <rect x="400" y="30" width="360" height="360" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+          <text x="415" y="55" fill="#1e293b" font-family="Plus Jakarta Sans" font-weight="bold" font-size="12">ArgoCD Children Apps (apps/children/)</text>
+          
+          <!-- Namespace/Project App -->
+          <rect x="420" y="80" width="320" height="45" rx="6" fill="#f8fafc" stroke="#3b82f6" stroke-width="1"/>
+          <text x="435" y="105" fill="#1e293b" font-family="Plus Jakarta Sans" font-weight="600" font-size="11">Namespace &amp; AppProject</text>
+          <text x="725" y="107" fill="#3b82f6" font-family="JetBrains Mono" font-weight="bold" font-size="10" text-anchor="end">Wave -1 &amp; 0</text>
+          
+          <!-- Monitoring & Rollouts (Wave 1) -->
+          <rect x="420" y="140" width="320" height="55" rx="6" fill="#f8fafc" stroke="#22c55e" stroke-width="1"/>
+          <text x="435" y="160" fill="#1e293b" font-family="Plus Jakarta Sans" font-weight="600" font-size="11">kube-prometheus-stack &amp; Argo Rollouts</text>
+          <text x="435" y="175" fill="#475569" font-family="Plus Jakarta Sans" font-size="10">Prometheus, Grafana, Alertmanager &amp; Rollout Controller</text>
+          <text x="725" y="167" fill="#22c55e" font-family="JetBrains Mono" font-weight="bold" font-size="10" text-anchor="end">Wave 1</text>
+          
+          <!-- Web Workload App -->
+          <rect x="420" y="210" width="320" height="55" rx="6" fill="#f8fafc" stroke="#f59e0b" stroke-width="1"/>
+          <text x="435" y="230" fill="#1e293b" font-family="Plus Jakarta Sans" font-weight="600" font-size="11">Web App (Argo Rollout &amp; Canary)</text>
+          <text x="435" y="247" fill="#475569" font-family="Plus Jakarta Sans" font-size="10">Argo Rollout, Service Stable &amp; Canary, Analysis</text>
+          <text x="725" y="237" fill="#f59e0b" font-family="JetBrains Mono" font-weight="bold" font-size="10" text-anchor="end">Wave 2</text>
+          
+          <!-- Web Monitoring App -->
+          <rect x="420" y="280" width="320" height="90" rx="6" fill="#f8fafc" stroke="#ef4444" stroke-width="1"/>
+          <text x="435" y="305" fill="#1e293b" font-family="Plus Jakarta Sans" font-weight="600" font-size="11">Web Observability Resource</text>
+          <text x="435" y="322" fill="#475569" font-family="Plus Jakarta Sans" font-size="10">1. ServiceMonitor (Auto Discovery)</text>
+          <text x="435" y="337" fill="#475569" font-family="Plus Jakarta Sans" font-size="10">2. PrometheusRule (SLO Alerting Rules)</text>
+          <text x="435" y="352" fill="#475569" font-family="Plus Jakarta Sans" font-size="10">3. Grafana Dashboard (Auto-discover ConfigMap)</text>
+          <text x="725" y="307" fill="#ef4444" font-family="JetBrains Mono" font-weight="bold" font-size="10" text-anchor="end">Wave 3</text>
+
+          <!-- Arrows -->
+          <!-- Git to Root -->
+          <path d="M140 190 H192" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+          <!-- Root to Children container -->
+          <path d="M340 190 H392" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrow)"/>
+          
+          <!-- Arrow Markers -->
+          <defs>
+            <marker id="arrow" markerWidth="6" markerHeight="6" refX="2" refY="3" orient="auto">
+              <path d="M0 0 L6 3 L0 6 Z" fill="#94a3b8"/>
+            </marker>
+          </defs>
+        </svg>
+      </div>
+    </section>
+
+    <!-- SECTION: GitOps Pattern -->
+    <section id="gitops-pattern">
+      <div class="section-header">
+        <div class="section-icon icon-blue">📦</div>
+        <h2>Mẫu thiết kế App-of-Apps trong GitOps</h2>
+      </div>
+      <p>Kho lưu trữ này triển khai mô hình <strong>App-of-Apps (Ứng dụng lồng Ứng dụng)</strong> của ArgoCD. Thay vì phải cấu hình thủ công từng ứng dụng trên bảng điều khiển giao diện (UI) của ArgoCD, chúng ta khai báo một ứng dụng gốc (Root Application) duy nhất có tên là <code>w10-lab-root</code>.</p>
+      
+      <p>Ứng dụng Root này chỉ có nhiệm vụ trỏ đến thư mục <span class="path-label">apps/children/</span> trong kho lưu trữ Git. Kustomize sẽ quét toàn bộ thư mục này và sinh ra một loạt các tài nguyên dạng <code>Application</code> (Ứng dụng con). Lúc này, ArgoCD tự động giám sát và quản lý vòng đời của tất cả các ứng dụng con một cách tập trung.</p>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Cấp độ Ứng Dụng</th>
+              <th>Đường dẫn Git (Source Path)</th>
+              <th>Nhiệm vụ</th>
+              <th>Hạn chế / Điểm Yếu (Drawbacks)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Root Application</strong><br><span class="badge badge-amber">Bootstrap</span></td>
+              <td><span class="path-label">apps/children/</span></td>
+              <td>Theo dõi kho lưu trữ để tạo và quản lý toàn bộ các ứng dụng con. Chỉ cần áp dụng một lần duy nhất bằng lệnh tay hoặc CI ban đầu.</td>
+              <td>Nếu tệp ứng dụng Root bị hỏng, ArgoCD có thể xóa nhầm (prune) tất cả các ứng dụng con trong cluster, gây gián đoạn toàn hệ thống.</td>
+            </tr>
+            <tr>
+              <td><strong>Children Applications</strong><br><span class="badge badge-blue">Tài Nguyên</span></td>
+              <td><span class="path-label">workloads/web/overlays/lab</span><br><span class="path-label">workloads/web-monitoring/...</span></td>
+              <td>Triển khai chi tiết các dịch vụ nghiệp vụ (Web app) hoặc cơ sở hạ tầng giám sát (Prometheus, Grafana).</td>
+              <td>Việc quản lý các tham số cấu hình riêng biệt cho từng môi trường phức tạp hơn, đòi hỏi sơ đồ tổ chức thư mục Kustomize chặt chẽ.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION: Bootstrap Root & Children -->
+    <section id="bootstrap-root">
+      <div class="section-header">
+        <div class="section-icon icon-amber">⚙️</div>
+        <h2>Khai báo Root &amp; Children Application</h2>
+      </div>
+      <p>Dưới đây là nội dung của tệp cấu hình Root Application <a href="file:///C:/Users/thanh/Desktop/workspace/xbrain/w10-lab/w10-gitops/apps/root.yaml">apps/root.yaml</a>:</p>
+
+      <div class="code-block-container">
+        <div class="code-title">apps/root.yaml</div>
+<pre class="code-block"><span class="kw">apiVersion</span>: <span class="str">argoproj.io/v1alpha1</span>
+<span class="kw">kind</span>: <span class="str">Application</span>
+<span class="kw">metadata</span>:
+  <span class="fn">name</span>: <span class="str">w10-lab-root</span>
+  <span class="fn">namespace</span>: <span class="str">argocd</span>  <span class="cmt"># Phải đặt trong namespace quản trị của ArgoCD</span>
+<span class="kw">spec</span>:
+  <span class="fn">project</span>: <span class="str">default</span>  <span class="cmt"># Root Application được quyền chạy dưới project default của quản trị</span>
+  <span class="fn">source</span>:
+    <span class="fn">repoURL</span>: <span class="str">https://github.com/pho-veteran/w10-gitops.git</span>
+    <span class="fn">targetRevision</span>: <span class="str">main</span>
+    <span class="fn">path</span>: <span class="str">apps/children</span>  <span class="cmt"># Nơi chứa kustomization liên kết các app con</span>
+  <span class="fn">destination</span>:
+    <span class="fn">server</span>: <span class="str">https://kubernetes.default.svc</span>
+    <span class="fn">namespace</span>: <span class="str">argocd</span>
+  <span class="fn">syncPolicy</span>:
+    <span class="fn">automated</span>:
+      <span class="fn">prune</span>: <span class="val">true</span>      <span class="cmt"># Tự động xóa tài nguyên trên k8s nếu trên Git bị xóa</span>
+      <span class="fn">selfHeal</span>: <span class="val">true</span>   <span class="cmt"># Tự động sửa lỗi nếu phát hiện cấu hình thực tế bị lệch (drift)</span>
+    <span class="fn">syncOptions</span>:
+      - <span class="str">CreateNamespace=true</span>  <span class="cmt"># Tự động tạo namespace argocd nếu chưa tồn tại</span></pre>
+      </div>
+
+      <div class="callout callout-amber">
+        <p><strong>Lưu ý quan trọng:</strong> <code>prune: true</code> đảm bảo dọn dẹp sạch tài nguyên rác, tuy nhiên khi cấu hình lần đầu phải kiểm tra kỹ đường dẫn <code>path</code> trên Git. Nếu trỏ sai đường dẫn rỗng, ArgoCD sẽ coi như toàn bộ ứng dụng bị xóa và thu hồi sạch tài nguyên hiện hữu.</p>
+      </div>
+    </section>
+
+    <!-- SECTION: AppProject & RBAC -->
+    <section id="appproject-rbac">
+      <div class="section-header">
+        <div class="section-icon icon-blue">🛡️</div>
+        <h2>AppProject &amp; Phân Vùng Quyền Hạn (RBAC)</h2>
+      </div>
+      <p>Ứng dụng con không được phép sử dụng project <code>default</code> để tránh lạm quyền. Chúng được gom nhóm vào một cấu trúc logic chặt chẽ gọi là <code>AppProject</code>. Tệp <a href="file:///C:/Users/thanh/Desktop/workspace/xbrain/w10-lab/w10-gitops/apps/children/project.yaml">apps/children/project.yaml</a> giới hạn phạm vi tác động của lab:</p>
+
+      <div class="code-block-container">
+        <div class="code-title">apps/children/project.yaml</div>
+<pre class="code-block"><span class="kw">apiVersion</span>: <span class="str">argoproj.io/v1alpha1</span>
+<span class="kw">kind</span>: <span class="str">AppProject</span>
+<span class="kw">metadata</span>:
+  <span class="fn">name</span>: <span class="str">w10-lab</span>
+  <span class="fn">namespace</span>: <span class="str">argocd</span>
+  <span class="fn">annotations</span>:
+    <span class="fn">argocd.argoproj.io/sync-wave</span>: <span class="str">"0"</span>  <span class="cmt"># Khởi tạo ngay sau namespace</span>
+<span class="kw">spec</span>:
+  <span class="fn">description</span>: <span class="str">AppProject for the w10-lab GitOps demo.</span>
+  <span class="fn">sourceRepos</span>:
+    - <span class="str">https://github.com/pho-veteran/w10-gitops.git</span>
+    - <span class="str">https://github.com/argoproj/argo-rollouts.git</span>  <span class="cmt"># Cho phép tải tài nguyên Argo Rollouts từ repo chính thức</span>
+    - <span class="str">https://prometheus-community.github.io/helm-charts</span>  <span class="cmt"># Cho phép tải Helm chart giám sát bên ngoài</span>
+  <span class="fn">destinations</span>:
+    - <span class="fn">namespace</span>: <span class="str">demo</span>           <span class="cmt"># Chỉ cho phép triển khai xuống namespace demo</span>
+      <span class="fn">server</span>: <span class="str">https://kubernetes.default.svc</span>
+    - <span class="fn">namespace</span>: <span class="str">monitoring</span>     <span class="cmt"># Chỉ cho phép triển khai xuống namespace monitoring</span>
+      <span class="fn">server</span>: <span class="str">https://kubernetes.default.svc</span>
+    - <span class="fn">namespace</span>: <span class="str">kube-system</span>     <span class="cmt"># Cần thiết cho một số hạ tầng đặc biệt</span>
+      <span class="fn">server</span>: <span class="str">https://kubernetes.default.svc</span>
+    - <span class="fn">namespace</span>: <span class="str">argocd</span>
+      <span class="fn">server</span>: <span class="str">https://kubernetes.default.svc</span>
+    - <span class="fn">namespace</span>: <span class="str">argo-rollouts</span>   <span class="cmt"># Cài đặt Argo Rollouts controller</span>
+      <span class="fn">server</span>: <span class="str">https://kubernetes.default.svc</span>
+  <span class="fn">clusterResourceWhitelist</span>:
+    - <span class="fn">group</span>: <span class="str">'*'</span>  <span class="cmt"># Cho phép quản lý tài nguyên cấp Cluster (ClusterRole, CustomResourceDefinition)</span>
+      <span class="fn">kind</span>: <span class="str">'*'</span>   <span class="cmt"># Cần thiết vì cài đặt Prometheus Operator và Argo Rollouts cần đăng ký CRD</span>
+  <span class="fn">namespaceResourceWhitelist</span>:
+    - <span class="fn">group</span>: <span class="str">'*'</span>
+      <span class="fn">kind</span>: <span class="str">'*'</span></pre>
+      </div>
+
+      <div class="callout callout-blue">
+        <p><strong>Thiết kế bảo mật tối ưu:</strong> Việc cấu hình <code>sourceRepos</code> giới hạn cụ thể chỉ 3 nguồn (Kho Git của lab, Kho của Argo Rollouts và Kho Helm chính thức của Prometheus Community) giúp ngăn chặn việc các kỹ sư cố tình hoặc vô ý nạp vào các biểu đồ Helm hoặc kho mã nguồn độc hại không được kiểm duyệt từ bên ngoài.</p>
+      </div>
+    </section>
+
+    <!-- SECTION: Sync Waves -->
+    <section id="sync-waves">
+      <div class="section-header">
+        <div class="section-icon icon-green">⏳</div>
+        <h2>Thứ tự Đồng bộ (Sync Waves)</h2>
+      </div>
+      <p>Trong một hệ thống Kubernetes thực tế, các tài nguyên có sự phụ thuộc lẫn nhau. Ví dụ: Bạn không thể tạo một Pod trong namespace <code>demo</code> khi bản thân namespace đó chưa được tạo; bạn cũng không thể khai báo <code>ServiceMonitor</code> nếu <code>CustomResourceDefinition (CRD)</code> của Prometheus Operator chưa được nạp vào API Server.</p>
+      
+      <p>ArgoCD giải quyết vấn đề này thông qua <strong>Sync Waves</strong> (được khai báo qua annotation <code>argocd.argoproj.io/sync-wave</code>). Số có giá trị càng nhỏ sẽ được triển khai trước (ví dụ <code>-1</code>), sau khi trạng thái của Wave trước đạt mức <code>Healthy</code>, ArgoCD mới tiến hành đồng bộ Wave tiếp theo.</p>
+
+      <div class="stepper">
+        <!-- Step -1 -->
+        <div class="step-item">
+          <div class="step-line">
+            <div class="step-dot">-1</div>
+            <div class="step-connector"></div>
+          </div>
+          <div class="step-content">
+            <div class="step-title">Namespace Creation <span class="badge badge-amber">Tạo Môi Trường</span></div>
+            <div class="step-desc">Tạo namespace <code>demo</code> (Tệp <a href="file:///C:/Users/thanh/Desktop/workspace/xbrain/w10-lab/w10-gitops/apps/children/namespace.yaml">namespace.yaml</a>). Phải chạy đầu tiên để tạo vùng chứa cho các tài nguyên sau. Nếu bước này lỗi, toàn bộ pipeline sẽ lập tức bị dừng để tránh lỗi orphan.</div>
+          </div>
+        </div>
+
+        <!-- Step 0 -->
+        <div class="step-item">
+          <div class="step-line">
+            <div class="step-dot">0</div>
+            <div class="step-connector"></div>
+          </div>
+          <div class="step-content">
+            <div class="step-title">ArgoCD AppProject <span class="badge badge-blue">Bảo Mật</span></div>
+            <div class="step-desc">Tạo <code>AppProject</code> có tên <code>w10-lab</code>. Thiết lập các luật bảo mật, giới hạn các cluster đích và danh sách các repo được phép kéo mã nguồn về.</div>
+          </div>
+        </div>
+
+        <!-- Step 1 -->
+        <div class="step-item">
+          <div class="step-line">
+            <div class="step-dot">1</div>
+            <div class="step-connector"></div>
+          </div>
+          <div class="step-content">
+            <div class="step-title">kube-prometheus-stack &amp; Argo Rollouts <span class="badge badge-green">Hạ Tầng Giám Sát &amp; Triển Khai</span></div>
+            <div class="step-desc">Cài đặt Prometheus, Grafana, Alertmanager cùng toàn bộ CustomResourceDefinitions (CRDs) cần thiết. Đồng thời, triển khai bộ điều khiển <code>Argo Rollouts Controller</code> để hỗ trợ tính năng Canary Deployment. Cả hai ứng dụng này đều dùng sync option <code>ServerSideApply=true</code> vì kích thước CRD rất lớn.</div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step-item">
+          <div class="step-line">
+            <div class="step-dot">2</div>
+            <div class="step-connector"></div>
+          </div>
+          <div class="step-content">
+            <div class="step-title">Web Application Workload (Rollout) <span class="badge badge-amber">Ứng Dụng Chạy</span></div>
+            <div class="step-desc">Triển khai <code>Argo Rollout</code> của ứng dụng Web cùng 2 dịch vụ: <code>web</code> (Stable) và <code>web-canary</code> (Canary), kèm theo <code>AnalysisTemplate</code> để tự động phân tích sức khỏe của phiên bản mới trước khi cho phép thăng cấp (promote) lên 100%.</div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step-item">
+          <div class="step-line">
+            <div class="step-dot">3</div>
+          </div>
+          <div class="step-content">
+            <div class="step-title">Web Observability Configs <span class="badge badge-red">Giám Sát Tự Động</span></div>
+            <div class="step-desc">Đồng bộ hai <code>ServiceMonitor</code> (quét số liệu của Stable vs Canary), <code>PrometheusRule</code> (chứa các cảnh báo SLO Burn Rate dựa trên lưu lượng HTTP request thực tế) và <code>ConfigMap</code> Grafana dashboard vào cluster để tự động hóa hoàn toàn việc giám sát.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION: Kustomize Web -->
+    <section id="kustomize-web">
+      <div class="section-header">
+        <div class="section-icon icon-blue">🧬</div>
+        <h2>Kế thừa Base &amp; Overlays (Decouple Namespace)</h2>
+      </div>
+      <p>Để quản lý cấu hình linh hoạt, mã nguồn áp dụng các quy chuẩn thực hành tốt nhất (Best Practices) của Kustomize:</p>
+      
+      <p><strong>1. Tách biệt hoàn toàn Namespace khỏi Base:</strong> Trong bản cập nhật mới nhất, tất cả các tệp YAML trong thư mục <code>base/</code> (như Rollout, Service, ServiceMonitor, PrometheusRule, ConfigMap) đều đã được <strong>loại bỏ</strong> thuộc tính <code>namespace: demo</code>. Điều này giúp các tài nguyên Base hoàn toàn độc lập và có thể tái sử dụng để sinh ra cấu hình cho bất kỳ môi trường nào (Staging, Production) chỉ bằng cách chỉ định namespace ở Overlay.</p>
+
+      <p>Tệp base <a href="file:///C:/Users/thanh/Desktop/workspace/xbrain/w10-lab/w10-gitops/workloads/web/base/rollout.yaml">workloads/web/base/rollout.yaml</a> hiện chỉ khai báo metadata cơ bản:</p>
+
+      <div class="code-block-container">
+        <div class="code-title">workloads/web/base/rollout.yaml</div>
+<pre class="code-block"><span class="kw">apiVersion</span>: <span class="str">argoproj.io/v1alpha1</span>
+<span class="kw">kind</span>: <span class="str">Rollout</span>
+<span class="kw">metadata</span>:
+  <span class="fn">name</span>: <span class="str">web</span>
+  <span class="cmt"># Không khai báo namespace ở đây để giữ tính cơ động</span>
+  <span class="fn">labels</span>:
+    <span class="fn">app.kubernetes.io/name</span>: <span class="str">web</span>
+    <span class="fn">app.kubernetes.io/part-of</span>: <span class="str">p2-w10-lab</span>
+    <span class="fn">app.kubernetes.io/managed-by</span>: <span class="str">argocd</span></pre>
+      </div>
+
+      <p><strong>2. Sử dụng Khối Cấu hình Labels Hiện Đại:</strong> Ở tệp cấu hình overlay của web (<a href="file:///C:/Users/thanh/Desktop/workspace/xbrain/w10-lab/w10-gitops/workloads/web/overlays/lab/kustomization.yaml">workloads/web/overlays/lab/kustomization.yaml</a>):</p>
+
+      <div class="code-block-container">
+        <div class="code-title">workloads/web/overlays/lab/kustomization.yaml</div>
+<pre class="code-block"><span class="kw">apiVersion</span>: <span class="str">kustomize.config.k8s.io/v1beta1</span>
+<span class="kw">kind</span>: <span class="str">Kustomization</span>
+<span class="kw">namespace</span>: <span class="str">demo</span>  <span class="cmt"># Kustomize tự động tiêm namespace demo vào mọi tài nguyên của base</span>
+<span class="kw">resources</span>:
+- <span class="str">../../base</span>
+<span class="kw">images</span>:
+- <span class="fn">name</span>: <span class="str">w10-web</span>
+  <span class="fn">newName</span>: <span class="str">vihn/w10-web</span>
+  <span class="fn">newTag</span>: <span class="str">main-87be40f</span>
+<span class="kw">labels</span>:
+- <span class="fn">pairs</span>:
+    <span class="fn">app.kubernetes.io/environment</span>: <span class="str">lab</span></pre>
+      </div>
+
+      <div class="callout callout-blue">
+        <p><strong>Gắn nhãn đồng bộ và nhất quán:</strong> Kustomize tự động chèn nhãn (labels) môi trường <code>app.kubernetes.io/environment: lab</code> vào siêu dữ liệu (metadata) của tất cả tài nguyên được tạo ra từ thư mục base, giúp dễ dàng truy vấn và phân vùng tài nguyên trên cluster Kubernetes.</p>
+      </div>
+    </section>
+
+    <!-- SECTION: Argo Rollouts & Canary Strategy -->
+    <section id="canary-rollout">
+      <div class="section-header">
+        <div class="section-icon icon-amber">🚀</div>
+        <h2>Argo Rollouts &amp; Chiến lược Canary Tự Động</h2>
+      </div>
+      <p>Nhằm đảm bảo an toàn khi cập nhật ứng dụng, lab đã được tích hợp <strong>Argo Rollouts</strong> để triển khai theo chiến lược <strong>Canary Deployment</strong> thay thế cho cơ chế Recreate/RollingUpdate truyền thống của Deployment.</p>
+      
+      <h3>1. Cấu hình Rollout với hai Service và Phân luồng Traffic</h3>
+      <p>Tệp cấu hình <a href="file:///C:/Users/thanh/Desktop/workspace/xbrain/w10-lab/w10-gitops/workloads/web/base/rollout.yaml">workloads/web/base/rollout.yaml</a> định nghĩa hai service riêng biệt:</p>
+      <ul>
+        <li><code>stableService: web</code>: Trỏ đến các pod phiên bản ổn định (Stable) đang phục vụ phần lớn lưu lượng truy cập.</li>
+        <li><code>canaryService: web-canary</code>: Trỏ đến các pod phiên bản mới (Canary) để chạy thử nghiệm và kiểm tra sức khỏe.</li>
+      </ul>
+      
+      <p>Các bước thực hiện Canary release được thiết lập chi tiết:</p>
+      <div class="code-block-container">
+        <div class="code-title">workloads/web/base/rollout.yaml (Phần Canary Strategy)</div>
+<pre class="code-block"><span class="kw">strategy</span>:
+  <span class="fn">canary</span>:
+    <span class="fn">stableService</span>: <span class="str">web</span>
+    <span class="fn">canaryService</span>: <span class="str">web-canary</span>
+    <span class="fn">maxSurge</span>: <span class="val">1</span>
+    <span class="fn">maxUnavailable</span>: <span class="val">0</span>
+    <span class="fn">abortScaleDownDelaySeconds</span>: <span class="val">150</span>
+    <span class="fn">analysis</span>:
+      <span class="fn">templates</span>:
+        - <span class="fn">templateName</span>: <span class="str">web-canary-health</span>
+      <span class="fn">args</span>:
+        - <span class="fn">name</span>: <span class="str">service-name</span>
+          <span class="fn">value</span>: <span class="str">web-canary</span>
+      <span class="fn">startingStep</span>: <span class="val">1</span>
+    <span class="fn">steps</span>:
+      - <span class="fn">setWeight</span>: <span class="val">50</span>     <span class="cmt"># Định tuyến 50% lưu lượng truy cập qua Canary</span>
+      - <span class="fn">pause</span>:
+          <span class="fn">duration</span>: <span class="str">2m</span>    <span class="cmt"># Tạm dừng 2 phút để thu thập dữ liệu phân tích</span>
+      - <span class="fn">setWeight</span>: <span class="val">100</span>    <span class="cmt"># Hoàn thành rollout 100% nếu phân tích thành công</span></pre>
+      </div>
+
+      <h3>2. Tự động Phân tích Canary (Automated Canary Analysis)</h3>
+      <p>Trong thời gian tạm dừng ở bước 1, Argo Rollouts sẽ chạy một tiến trình phân tích dựa trên <a href="file:///C:/Users/thanh/Desktop/workspace/xbrain/w10-lab/w10-gitops/workloads/web/base/analysis-template.yaml">AnalysisTemplate (web-canary-health)</a>. Nó tự động truy vấn Prometheus để đo lường 2 chỉ số quan trọng của phiên bản Canary:</p>
+      
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Tên Metric</th>
+              <th>Chu Kỳ &amp; Số Lần Đo</th>
+              <th>Điều Kiện Thành Công (Success)</th>
+              <th>Điều Kiện Thất Bại (Failure)</th>
+              <th>Truy Vấn Prometheus (PromQL)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>canary-request-volume</strong><br><span class="badge badge-blue">Lượng Truy Cập</span></td>
+              <td>Mỗi 30 giây, đo 6 lần (tổng 3 phút)</td>
+              <td><code>result[0] &gt;= 0.1</code> req/s</td>
+              <td><code>result[0] &lt; 0.05</code> req/s<br>(Lỗi quá 2 lần sẽ abort)</td>
+              <td><code>sum(rate(http_requests_total{namespace="demo",service="web-canary",route!="/api/health",route!="/metrics"}[1m]))</code></td>
+            </tr>
+            <tr>
+              <td><strong>canary-success-rate</strong><br><span class="badge badge-green">Tỷ Lệ Thành Công</span></td>
+              <td>Mỗi 30 giây, đo 6 lần (tổng 3 phút)</td>
+              <td><code>result[0] &gt;= 0.99</code> (99%)</td>
+              <td><code>result[0] &lt; 0.98</code> (98%)<br>(Lỗi quá 1 lần sẽ rollback ngay)</td>
+              <td><code>sum(rate(http_requests_total{...,status_code!~"5..",...}[1m])) / sum(rate(http_requests_total{...}[1m]))</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-green">
+        <p><strong>Tính năng Tự Động Hồi Phục (Auto-Rollback):</strong> Nếu phiên bản Canary sinh ra nhiều lỗi HTTP 5xx dẫn đến tỷ lệ thành công sụt giảm xuống dưới 98% (hoặc không nhận được lưu lượng tải tối thiểu 0.05 req/s), Argo Rollouts sẽ ngay lập tức hủy bỏ (abort) tiến trình cập nhật, tự động đưa 100% traffic trở lại stable pods mà không cần bất kỳ sự can thiệp thủ công nào.</p>
+      </div>
+    </section>
+
+    <!-- SECTION: Prometheus & Grafana Stack -->
+    <section id="monitoring-stack">
+      <div class="section-header">
+        <div class="section-icon icon-amber">📊</div>
+        <h2>Hạ Tầng Giám Sát: Prometheus &amp; Grafana Stack</h2>
+      </div>
+      <p>Ứng dụng giám sát chính của lab được định nghĩa tại <a href="file:///C:/Users/thanh/Desktop/workspace/xbrain/w10-lab/w10-gitops/apps/children/monitoring.yaml">apps/children/monitoring.yaml</a>. So với phiên bản trước, cấu hình Helm values đã được tinh chỉnh tối ưu:</p>
+
+      <p><strong>1. Loại bỏ cấu hình DataSource trùng lặp:</strong> Phần cấu hình <code>additionalDataSources</code> thủ công trỏ tới Prometheus nội bộ đã được xóa bỏ hoàn toàn. Do Helm Chart <code>kube-prometheus-stack</code> khi cài đặt mặc định đã tự tạo sẵn một DataSource mặc định kết nối trực tiếp đến Prometheus của nó, việc khai báo cứng địa chỉ URL trước đây là thừa và dễ gây lỗi khi đổi cấu hình dịch vụ.</p>
+
+      <p><strong>2. Kích hoạt giám sát xuyên Namespace (Multi-Namespace Discovery):</strong> Đây là cập nhật cực kỳ quan trọng. Theo cấu hình mặc định, Prometheus Operator chỉ quét tài nguyên giám sát trong nội bộ namespace của nó (<code>monitoring</code>). Bản cập nhật mới đã bổ sung hai trường chỉ định rỗng <code>{}</code>:</p>
+
+      <div class="code-block-container">
+        <div class="code-title">apps/children/monitoring.yaml (Phần cấu hình Prometheus)</div>
+<pre class="code-block"><span class="kw">prometheus</span>:
+  <span class="fn">prometheusSpec</span>:
+    <span class="fn">serviceMonitorSelectorNilUsesHelmValues</span>: <span class="val">false</span>
+    <span class="fn">serviceMonitorNamespaceSelector</span>: {}  <span class="cmt"># Quét ServiceMonitor ở MỌI namespace (bao gồm demo)</span>
+    <span class="fn">ruleSelectorNilUsesHelmValues</span>: <span class="val">false</span>
+    <span class="fn">ruleNamespaceSelector</span>: {}            <span class="cmt"># Quét PrometheusRule ở MỌI namespace</span></pre>
+      </div>
+
+      <p><strong>3. Vô hiệu hóa việc giám sát các thành phần Kubernetes Control Plane:</strong> Vì lab chạy trên môi trường Minikube (không phải một cụm k8s hoàn chỉnh), một số thành phần như Controller Manager, Scheduler, và Etcd không xuất ra metrics tiêu chuẩn hoặc không truy cập được trực tiếp, gây ra các cảnh báo lỗi liên tục trên Prometheus. Cấu hình Helm đã tắt chúng đi để tối ưu tài nguyên:</p>
+
+      <div class="code-block-container">
+        <div class="code-title">apps/children/monitoring.yaml (Phần vô hiệu hóa Control Plane Scrapers)</div>
+<pre class="code-block"><span class="kw">kubeControllerManager</span>:
+  <span class="fn">enabled</span>: <span class="val">false</span>
+<span class="kw">kubeScheduler</span>:
+  <span class="fn">enabled</span>: <span class="val">false</span>
+<span class="kw">kubeEtcd</span>:
+  <span class="fn">enabled</span>: <span class="val">false</span></pre>
+      </div>
+
+      <p><strong>4. Định cấu hình Cảnh báo Email qua SMTP Relay (Brevo):</strong> Để Alertmanager có thể gửi thư cảnh báo khi hệ thống gặp lỗi hoặc khi SLO bị vi phạm, chúng ta trỏ cấu hình Alertmanager tới Kubernetes Secret <code>alertmanager-gmail-config</code>:</p>
+
+      <div class="code-block-container">
+        <div class="code-title">apps/children/monitoring.yaml (Phần cấu hình Alertmanager)</div>
+<pre class="code-block"><span class="kw">alertmanager</span>:
+  <span class="fn">enabled</span>: <span class="val">true</span>
+  <span class="fn">alertmanagerSpec</span>:
+    <span class="fn">configSecret</span>: <span class="str">alertmanager-gmail-config</span>  <span class="cmt"># Secret chứa thông tin SMTP của Brevo</span></pre>
+      </div>
+
+      <div class="callout callout-green">
+        <p><strong>Cấu hình SMTP Relay:</strong> Thông tin chi tiết về các tham số kết nối SMTP Brevo và cách khởi tạo Secret này được ghi lại trong tài liệu <a href="file:///C:/Users/thanh/Desktop/workspace/xbrain/w10-lab/w10-gitops/alertmanager-secret.md">alertmanager-secret.md</a>. Nhờ cơ chế này, mọi thông báo sự cố (firing) và phục hồi (resolved) sẽ được tự động gửi đến địa chỉ email cấu hình.</p>
+      </div>
+    </section>
+
+    <!-- SECTION: ServiceMonitor & SLO Rules -->
+    <section id="web-observability">
+      <div class="section-header">
+        <div class="section-icon icon-blue">👁️</div>
+        <h2>ServiceMonitor &amp; SLO PrometheusRules</h2>
+      </div>
+      <p>Để Prometheus Operator tự động thu thập (scrape) metrics của Web, chúng ta khai báo hai tệp cấu hình <code>ServiceMonitor</code> riêng biệt trong base, phân tách theo nhãn <code>component: stable</code> và <code>component: canary</code>:</p>
+
+      <div class="code-block-container">
+        <div class="code-title">workloads/web-monitoring/base/servicemonitor.yaml (Stable)</div>
+<pre class="code-block"><span class="kw">apiVersion</span>: <span class="str">monitoring.coreos.com/v1</span>
+<span class="kw">kind</span>: <span class="str">ServiceMonitor</span>
+<span class="kw">metadata</span>:
+  <span class="fn">name</span>: <span class="str">web</span>
+  <span class="fn">labels</span>:
+    <span class="fn">app.kubernetes.io/name</span>: <span class="str">web</span>
+    <span class="fn">app.kubernetes.io/part-of</span>: <span class="str">p2-w10-lab</span>
+<span class="kw">spec</span>:
+  <span class="fn">selector</span>:
+    <span class="fn">matchLabels</span>:
+      <span class="fn">app.kubernetes.io/name</span>: <span class="str">web</span>
+      <span class="fn">app.kubernetes.io/component</span>: <span class="str">stable</span>
+  <span class="fn">endpoints</span>:
+    - <span class="fn">port</span>: <span class="str">http</span>
+      <span class="fn">path</span>: <span class="str">/metrics</span>
+      <span class="fn">interval</span>: <span class="str">15s</span></pre>
+      </div>
+
+      <div class="code-block-container">
+        <div class="code-title">workloads/web-monitoring/base/servicemonitor-canary.yaml (Canary)</div>
+<pre class="code-block"><span class="kw">apiVersion</span>: <span class="str">monitoring.coreos.com/v1</span>
+<span class="kw">kind</span>: <span class="str">ServiceMonitor</span>
+<span class="kw">metadata</span>:
+  <span class="fn">name</span>: <span class="str">web-canary</span>
+  <span class="fn">labels</span>:
+    <span class="fn">app.kubernetes.io/name</span>: <span class="str">web</span>
+    <span class="fn">app.kubernetes.io/part-of</span>: <span class="str">p2-w10-lab</span>
+<span class="kw">spec</span>:
+  <span class="fn">selector</span>:
+    <span class="fn">matchLabels</span>:
+      <span class="fn">app.kubernetes.io/name</span>: <span class="str">web</span>
+      <span class="fn">app.kubernetes.io/component</span>: <span class="str">canary</span>
+  <span class="fn">endpoints</span>:
+    - <span class="fn">port</span>: <span class="str">http</span>
+      <span class="fn">path</span>: <span class="str">/metrics</span>
+      <span class="fn">interval</span>: <span class="str">15s</span></pre>
+      </div>
+
+      <p>Sau đó, chúng ta định nghĩa các luật cảnh báo chỉ số SLO và cảnh báo tỷ lệ lỗi Canary sử dụng <code>PrometheusRule</code> tại <a href="file:///C:/Users/thanh/Desktop/workspace/xbrain/w10-lab/w10-gitops/workloads/web-monitoring/base/prometheusrule.yaml">workloads/web-monitoring/base/prometheusrule.yaml</a>. Tệp này thiết lập cảnh báo burn rate dựa trên số yêu cầu HTTP thực tế thay vì trạng thái hoạt động thô của Pod:</p>
+    </section>
+
+    <!-- SECTION: SLO Math -->
+    <section id="slo-math">
+      <div class="section-header">
+        <div class="section-icon icon-red">🧮</div>
+        <h2>Toán Học Đằng Sau SLO &amp; Cảnh Báo Burn Rate</h2>
+      </div>
+      <p>Hệ thống của chúng ta đề ra mục tiêu: <strong>Độ khả dụng (Availability) của Web đạt 99.9% trong chu kỳ 30 ngày.</strong></p>
+      
+      <ul>
+        <li><strong>Error Budget (Ngân sách lỗi):</strong> Là tỷ lệ lỗi tối đa được chấp nhận. Với độ khả dụng 99.9%, ngân sách lỗi là: <code>100% - 99.9% = 0.1% = 0.001</code>.</li>
+        <li><strong>Burn Rate (Tốc độ tiêu thụ):</strong> Burn Rate là hệ số cho biết ngân sách lỗi đang bị tiêu thụ nhanh như thế nào.
+          <ul>
+            <li><code>Burn Rate = 1</code>: Bạn sẽ tiêu thụ vừa sạch 100% ngân sách lỗi trong đúng 30 ngày.</li>
+            <li><code>Burn Rate = 14.4</code>: Bạn sẽ tiêu thụ hết sạch ngân sách lỗi trong vòng 50 giờ (30 ngày / 14.4). Điều này có nghĩa là tỷ lệ lỗi đo được trong khoảng thời gian này là: <code>14.4 * 0.1% = 1.44% = 0.0144</code>.</li>
+            <li><code>Burn Rate = 6</code>: Bạn sẽ tiêu hao hết sạch ngân sách lỗi trong vòng 5 ngày (120 giờ). Tỷ lệ lỗi đo được tương đương: <code>6 * 0.1% = 0.6% = 0.006</code>.</li>
+          </ul>
+        </li>
+      </ul>
+
+      <p>Trong tệp cấu hình cảnh báo, chúng ta áp dụng mô hình <strong>Multi-Window Multi-Burn-Rate</strong>. Ý tưởng cốt lõi là kết hợp một cửa sổ ngắn (để phản ứng nhanh) và một cửa sổ dài (để kiểm tra xem lỗi có thực sự liên tục kéo dài hay không), nhằm triệt tiêu các cảnh báo giả (false positives) do mạng chập chờn nhất thời gây ra.</p>
+
+      <div class="code-block-container">
+        <div class="code-title">PrometheusRule Alerts Expression</div>
+<pre class="code-block"><span class="cmt"># Cảnh báo 1: Tiêu thụ nhanh ngân sách lỗi (WebAvailabilityFastBurn)</span>
+<span class="cmt"># Điều kiện: Burn Rate lớn hơn 14.4 (tương đương tỷ lệ lỗi 5xx &gt; 1.44%) ở cả cửa sổ 5 phút và 1 giờ</span>
+<span class="kw">expr</span>: |
+  (
+    sum(rate(http_requests_total{namespace="demo",service="web",status_code=~"5..",route!="/api/health",route!="/metrics"}[5m]))
+    /
+    sum(rate(http_requests_total{namespace="demo",service="web",route!="/api/health",route!="/metrics"}[5m]))
+  ) &gt; (14.4 * 0.001)
+  and
+  (
+    sum(rate(http_requests_total{namespace="demo",service="web",status_code=~"5..",route!="/api/health",route!="/metrics"}[1h]))
+    /
+    sum(rate(http_requests_total{namespace="demo",service="web",route!="/api/health",route!="/metrics"}[1h]))
+  ) &gt; (14.4 * 0.001)
+<span class="kw">for</span>: 2m  <span class="cmt"># Phải duy trì trong 2 phút liên tục mới bắn cảnh báo</span>
+<span class="kw">labels</span>:
+  <span class="fn">severity</span>: <span class="str">page</span>  <span class="cmt"># Cảnh báo khẩn cấp (PagerDuty/Email)</span>
+
+<span class="cmt"># Cảnh báo 2: Tiêu thụ chậm ngân sách lỗi (WebAvailabilitySlowBurn)</span>
+<span class="cmt"># Điều kiện: Burn Rate lớn hơn 6 (tương đương tỷ lệ lỗi 5xx &gt; 0.6%) ở cả cửa sổ 30 phút và 6 giờ</span>
+<span class="kw">expr</span>: |
+  (
+    sum(rate(http_requests_total{namespace="demo",service="web",status_code=~"5..",route!="/api/health",route!="/metrics"}[30m]))
+    /
+    sum(rate(http_requests_total{namespace="demo",service="web",route!="/api/health",route!="/metrics"}[30m]))
+  ) &gt; (6 * 0.001)
+  and
+  (
+    sum(rate(http_requests_total{namespace="demo",service="web",status_code=~"5..",route!="/api/health",route!="/metrics"}[6h]))
+    /
+    sum(rate(http_requests_total{namespace="demo",service="web",route!="/api/health",route!="/metrics"}[6h]))
+  ) &gt; (6 * 0.001)
+<span class="kw">for</span>: 15m <span class="cmt"># Phải duy trì trong 15 phút</span>
+<span class="kw">labels</span>:
+  <span class="fn">severity</span>: <span class="str">warning</span></pre>
+      </div>
+
+      <div class="callout callout-green">
+        <p><strong>Tại sao chuyển sang HTTP request-based metrics?</strong> Chỉ số <code>up</code> trước đây chỉ cho biết container có chạy hay không (ping availability). Tuy nhiên, một ứng dụng có thể đang chạy (up = 1) nhưng vẫn trả về lỗi hệ thống (như lỗi HTTP 500 khi kết nối cơ sở dữ liệu thất bại). Sử dụng <code>http_requests_total</code> giúp giám sát chính xác <strong>trải nghiệm thực tế của người dùng</strong> dựa trên số lượng yêu cầu thành công / thất bại, đồng thời loại bỏ lưu lượng ảo từ health check (<code>route!="/api/health"</code>) và scrape metrics (<code>route!="/metrics"</code>).</p>
+      </div>
+    </section>
+
+    <!-- SECTION: Grafana Dashboard Config -->
+    <section id="grafana-dashboard">
+      <div class="section-header">
+        <div class="section-icon icon-blue">📋</div>
+        <h2>Grafana Dashboard qua ConfigMap</h2>
+      </div>
+      <p>Để tự động đưa biểu đồ giám sát lên Grafana mà không cần thao tác tay, chúng ta tạo ConfigMap chứa dữ liệu JSON mô tả dashboard tại tệp <a href="file:///C:/Users/thanh/Desktop/workspace/xbrain/w10-lab/w10-gitops/workloads/web-monitoring/base/dashboard-configmap.yaml">dashboard-configmap.yaml</a>. Nhãn <code>grafana_dashboard: "1"</code> chính là mấu chốt để sidecar của Grafana tự động nhận dạng:</p>
+
+      <div class="code-block-container">
+        <div class="code-title">workloads/web-monitoring/base/dashboard-configmap.yaml</div>
+<pre class="code-block"><span class="kw">apiVersion</span>: <span class="str">v1</span>
+<span class="kw">kind</span>: <span class="str">ConfigMap</span>
+<span class="kw">metadata</span>:
+  <span class="fn">name</span>: <span class="str">web-slo-dashboard</span>
+  <span class="cmt"># Namespace demo đã được loại bỏ khỏi tệp base để tăng tính tái sử dụng</span>
+  <span class="fn">labels</span>:
+    <span class="fn">app.kubernetes.io/name</span>: <span class="str">web</span>
+    <span class="fn">app.kubernetes.io/part-of</span>: <span class="str">p2-w10-lab</span>
+    <span class="fn">grafana_dashboard</span>: <span class="str">"1"</span>  <span class="cmt"># Nhãn kích hoạt cơ chế auto-load của Grafana Sidecar</span>
+<span class="kw">data</span>:
+  <span class="fn">web-slo-dashboard.json</span>: |-
+    {
+      <span class="str">"uid"</span>: <span class="str">"web-slo"</span>,
+      <span class="str">"title"</span>: <span class="str">"Web SLO — HTTP Availability"</span>,
+      <span class="str">"refresh"</span>: <span class="str">"30s"</span>,
+      ...
+      <span class="cmt"># Panel hiển thị Ngân sách lỗi còn lại thực tế qua công thức HTTP request-based success rate</span>
+      <span class="str">"expr"</span>: <span class="str">"clamp_min(1 - ((1 - sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",status_code!~\"5..\",route!=\"/api/health\",route!=\"/metrics\"}[30d])) / sum(rate(http_requests_total{namespace=\"$namespace\",service=\"$service\",route!=\"/api/health\",route!=\"/metrics\"}[30d]))) / 0.001), 0)"</span>
+    }</pre>
+      </div>
+    </section>
+
+    <!-- SECTION: Drift Prevention -->
+    <section id="drift-prevention">
+      <div class="section-header">
+        <div class="section-icon icon-red">⚠️</div>
+        <h2>Vận Hành Hệ Thống &amp; Hiện Tượng Lệch Cấu Hình (Drift)</h2>
+      </div>
+      <p>Khi vận hành hệ thống GitOps, một trong những sai lầm phổ biến nhất là cố tình can thiệp thủ công vào tài nguyên trên Cluster thông qua lệnh <code>kubectl</code>.</p>
+
+      <div class="callout callout-red">
+        <p><strong>Cảnh báo Drift:</strong> Giả sử một kỹ sư chạy lệnh: 
+        <br><code>kubectl scale rollout web --replicas=3 -n demo</code>
+        <br>Vì Root Application cấu hình <code>selfHeal: true</code>, ArgoCD sẽ ngay lập tức phát hiện sự sai lệch giữa cấu hình Git (yêu cầu <code>replicas: 2</code>) và thực tế cụm (hiện tại là <code>3</code>). Hệ thống sẽ tự động gửi lệnh thu hồi để đưa số replicas về đúng giá trị <code>2</code> định nghĩa trên Git chỉ trong vòng vài giây.</p>
+      </div>
+
+      <p>Do đó, mọi thay đổi về số lượng replicas, cấu hình tài nguyên hay phiên bản ứng dụng đều <strong>bắt buộc</strong> phải được khai báo bằng cách cập nhật tệp YAML trên Git và đẩy một Commit mới lên nhánh chính (GitOps Workflow).</p>
+      
+      <h3>Bảng So Sánh Cơ Chế Khắc Phục Lệch Trạng Thái</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Cơ Chế Của ArgoCD</th>
+              <th>Nguyên Lý Hoạt Động</th>
+              <th>Hạn Chế / Rủi Ro (Drawbacks)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Prune (Dọn Rác)</strong></td>
+              <td>Tự động xóa bỏ các tài nguyên tồn tại trên cluster nhưng không còn được khai báo trong thư mục Git cấu hình.</td>
+              <td>Nếu vô tình xóa tệp YAML chứa tài nguyên quan trọng trên Git, ArgoCD sẽ xóa sổ tài nguyên đó trên Kubernetes ngay lập tức.</td>
+            </tr>
+            <tr>
+              <td><strong>SelfHeal (Tự Làm Lành)</strong></td>
+              <td>Phát hiện các thay đổi thủ công (như sửa Rollout bằng lệnh kubectl edit) và đè lại bằng cấu hình gốc từ Git.</td>
+              <td>Có thể ghi đè mất các thay đổi sửa nóng cấu hình (hotfix) của kỹ sư đang khắc phục sự cố khẩn cấp giữa đêm trước khi họ kịp tạo commit.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  // Intersection Observer Scroll-spy to highlight active nav links
+  const sections = document.querySelectorAll('section[id]');
+  const links    = document.querySelectorAll('nav a[href^="#"]');
+  
+  const spy = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => {
+          l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id);
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -60% 0px' });
+  
+  sections.forEach(s => spy.observe(s));
+</script>
+</body>
+</html>

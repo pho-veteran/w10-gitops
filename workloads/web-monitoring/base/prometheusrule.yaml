@@ -1,0 +1,98 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: web-slo
+  labels:
+    app.kubernetes.io/name: web
+    app.kubernetes.io/part-of: p2-w10-la
+spec:
+  groups:
+    - name: web.canary
+      rules:
+        - record: web:request_rate_1m
+          expr: |
+            sum(rate(http_requests_total{namespace="demo",service="web",route!="/api/health",route!="/metrics"}[1m]))
+        - record: web_canary:request_rate_1m
+          expr: |
+            sum(rate(http_requests_total{namespace="demo",service="web-canary",route!="/api/health",route!="/metrics"}[1m]))
+        - record: web:success_rate_1m
+          expr: |
+            sum(rate(http_requests_total{namespace="demo",service="web",status_code!~"5..",route!="/api/health",route!="/metrics"}[1m]))
+            /
+            sum(rate(http_requests_total{namespace="demo",service="web",route!="/api/health",route!="/metrics"}[1m]))
+        - record: web_canary:success_rate_1m
+          expr: |
+            sum(rate(http_requests_total{namespace="demo",service="web-canary",status_code!~"5..",route!="/api/health",route!="/metrics"}[1m]))
+            /
+            sum(rate(http_requests_total{namespace="demo",service="web-canary",route!="/api/health",route!="/metrics"}[1m]))
+        - alert: WebCanaryHighErrorRate
+          expr: |
+            (
+              sum(rate(http_requests_total{namespace="demo",service="web-canary",status_code=~"5..",route!="/api/health",route!="/metrics"}[1m]))
+              /
+              sum(rate(http_requests_total{namespace="demo",service="web-canary",route!="/api/health",route!="/metrics"}[1m]))
+            ) > 0.02
+            and
+            sum(rate(http_requests_total{namespace="demo",service="web-canary",route!="/api/health",route!="/metrics"}[1m])) > 0.1
+          for: 1m
+          labels:
+            severity: warning
+            slo: availability
+            rollout_phase: canary
+          annotations:
+            summary: Web canary error rate too high
+            description: >
+              Canary traffic for service web-canary exceeded 2% HTTP 5xx over 1m while serving real traffic.
+    - name: web.slo
+      # SLO: 99.9% of HTTP requests return non-5xx (user-facing availability)
+      # SLI = sum(rate(http_requests_total{status!~"5.."}[w])) / sum(rate(http_requests_total[w]))
+      # Error budget = 0.1% of requests may fail per 30 days
+      rules:
+        - alert: WebAvailabilityFastBurn
+          expr: |
+            (
+              sum(rate(http_requests_total{namespace="demo",service="web",status_code=~"5..",route!="/api/health",route!="/metrics"}[5m]))
+              /
+              sum(rate(http_requests_total{namespace="demo",service="web",route!="/api/health",route!="/metrics"}[5m]))
+            ) > (14.4 * 0.001)
+            and
+            (
+              sum(rate(http_requests_total{namespace="demo",service="web",status_code=~"5..",route!="/api/health",route!="/metrics"}[1h]))
+              /
+              sum(rate(http_requests_total{namespace="demo",service="web",route!="/api/health",route!="/metrics"}[1h]))
+            ) > (14.4 * 0.001)
+            and
+            sum(rate(http_requests_total{namespace="demo",service="web",route!="/api/health",route!="/metrics"}[5m])) > 0.1
+          for: 2m
+          labels:
+            severity: page
+            slo: availability
+          annotations:
+            summary: Web HTTP availability SLO fast burn
+            description: >
+              HTTP 5xx error rate is burning the 99.9% error budget at >14.4x speed
+              (both 5m and 1h windows breached). Users are experiencing errors now.
+        - alert: WebAvailabilitySlowBurn
+          expr: |
+            (
+              sum(rate(http_requests_total{namespace="demo",service="web",status_code=~"5..",route!="/api/health",route!="/metrics"}[30m]))
+              /
+              sum(rate(http_requests_total{namespace="demo",service="web",route!="/api/health",route!="/metrics"}[30m]))
+            ) > (6 * 0.001)
+            and
+            (
+              sum(rate(http_requests_total{namespace="demo",service="web",status_code=~"5..",route!="/api/health",route!="/metrics"}[6h]))
+              /
+              sum(rate(http_requests_total{namespace="demo",service="web",route!="/api/health",route!="/metrics"}[6h]))
+            ) > (6 * 0.001)
+            and
+            sum(rate(http_requests_total{namespace="demo",service="web",route!="/api/health",route!="/metrics"}[30m])) > 0.1
+          for: 15m
+          labels:
+            severity: warning
+            slo: availability
+          annotations:
+            summary: Web HTTP availability SLO slow burn
+            description: >
+              HTTP 5xx error rate is burning the 99.9% error budget at >6x speed
+              (both 30m and 6h windows breached). Error budget will be exhausted within days.

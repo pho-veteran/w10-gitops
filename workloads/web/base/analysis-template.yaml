@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: web-canary-health
+  labels:
+    app.kubernetes.io/name: web
+    app.kubernetes.io/part-of: p2-w10-lab
+spec:
+  args:
+    - name: service-name
+  metrics:
+    - name: canary-request-volume
+      interval: 30s
+      count: 6
+      successCondition: result[0] >= 0.1
+      failureCondition: result[0] < 0.1
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+          query: |
+            sum(rate(http_requests_total{namespace="demo",service="{{args.service-name}}",route!="/api/health",route!="/metrics"}[1m])) or vector(0)
+    - name: canary-error-rate
+      interval: 30s
+      count: 6
+      successCondition: result[0] <= 0.002
+      failureCondition: result[0] > 0.02
+      failureLimit: 1
+      inconclusiveLimit: 2
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+          query: |
+            (
+              sum(rate(http_requests_total{namespace="demo",service="{{args.service-name}}",status_code=~"5..",route!="/api/health",route!="/metrics"}[1m]))
+              /
+              sum(rate(http_requests_total{namespace="demo",service="{{args.service-name}}",route!="/api/health",route!="/metrics"}[1m]))
+            ) or vector(0)
+
+            # Empty query results fall back to 0 so rollout fails by metric logic.
+            # Real-traffic gating still stays in canary-request-volume.

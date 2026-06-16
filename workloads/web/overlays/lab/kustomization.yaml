@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: demo
+resources:
+- ../../base
+images:
+- name: w10-web
+  newName: vihn/w10-web
+  newTag: main-8fe78f0
+labels:
+- pairs:
+    app.kubernetes.io/environment: lab

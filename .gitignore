@@ -1,0 +1,23 @@
+# Local kube/argo artifacts
+*.kubeconfig
+*.kubeconfig.yaml
+
+# Secrets / env
+.env
+.env.*
+*.secret.yaml
+*.secrets.yaml
+alertmanager-secret.md
+
+# Rendered manifests / temp files
+.tmp/
+tmp/
+*.rendered.yaml
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/
+.agents/
