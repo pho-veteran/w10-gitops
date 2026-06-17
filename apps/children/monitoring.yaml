@@ -13,33 +13,84 @@ spec:
     targetRevision: 72.9.1
     helm:
       releaseName: kube-prometheus-stack
-      values: |
-        grafana:
-          adminPassword: admin
-          persistence:
-            enabled: false
-          sidecar:
-            dashboards:
-              enabled: true
-              label: grafana_dashboard
-              labelValue: "1"
-              searchNamespace: ALL
-        prometheus:
-          prometheusSpec:
-            serviceMonitorSelectorNilUsesHelmValues: false
-            serviceMonitorNamespaceSelector: {}
-            ruleSelectorNilUsesHelmValues: false
-            ruleNamespaceSelector: {}
+      values:
+        defaultRules:
+          create: false
+        nodeExporter:
+          enabled: false
+        kubeStateMetrics:
+          enabled: false
         kubeControllerManager:
           enabled: false
         kubeScheduler:
           enabled: false
         kubeEtcd:
           enabled: false
+        kubeProxy:
+          enabled: false
+        prometheusOperator:
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+        grafana:
+          adminPassword: admin
+          persistence:
+            enabled: false
+          resources:
+            requests:
+              cpu: 25m
+              memory: 96Mi
+            limits:
+              cpu: 200m
+              memory: 192Mi
+          sidecar:
+            dashboards:
+              enabled: true
+              label: grafana_dashboard
+              labelValue: "1"
+              searchNamespace: ALL
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                cpu: 100m
+                memory: 64Mi
         alertmanager:
           enabled: true
           alertmanagerSpec:
             configSecret: alertmanager-gmail-config
+            retention: 24h
+            replicas: 1
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                cpu: 100m
+                memory: 64Mi
+        prometheus:
+          prometheusSpec:
+            serviceMonitorSelectorNilUsesHelmValues: false
+            serviceMonitorNamespaceSelector: {}
+            ruleSelectorNilUsesHelmValues: false
+            ruleNamespaceSelector: {}
+            retention: 6h
+            retentionSize: 1GB
+            scrapeInterval: 30s
+            evaluationInterval: 30s
+            replicas: 1
+            resources:
+              requests:
+                cpu: 100m
+                memory: 300Mi
+              limits:
+                cpu: 750m
+                memory: 600Mi
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
