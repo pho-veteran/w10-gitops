@@ -21,6 +21,13 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        # node:20-alpine's "node" user is uid/gid 1000. A numeric runAsUser lets the
+        # kubelet verify non-root at container-create time (the image's `USER node` is a
+        # name, which triggers CreateContainerConfigError under runAsNonRoot). fsGroup
+        # keeps the /tmp emptyDir writable under readOnlyRootFilesystem.
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       containers:
