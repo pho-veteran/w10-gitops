@@ -1,0 +1,35 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: demo
+  name: sre
+  labels:
+    app.kubernetes.io/part-of: p2-w10-lab
+    app.kubernetes.io/managed-by: argocd
+rules:
+  - apiGroups: ["", "apps", "batch", "argoproj.io"]
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: [""]
+    resources: ["pods/exec", "pods/portforward"]
+    verbs: ["create"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "rolebindings"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: demo
+  name: sre-binding
+  labels:
+    app.kubernetes.io/part-of: p2-w10-lab
+    app.kubernetes.io/managed-by: argocd
+subjects:
+  - kind: ServiceAccount
+    name: sre-sa
+    namespace: demo
+roleRef:
+  kind: Role
+  name: sre
+  apiGroup: rbac.authorization.k8s.io

@@ -1,17 +1,22 @@
 # w10-gitops
 
-GitOps repository for Week 9 lab — deploys a web application with canary releases, SLO-based alerting, and full observability on Kubernetes.
+GitOps repository for Week 10 lab — deploys a web application with canary releases, SLO-based alerting, and full observability on Kubernetes.
 
 ## Architecture
 
 ```
 ArgoCD (app-of-apps)
 ├── namespace (demo)
+├── platform-rbac (developer / sre / viewer roles)
+├── gatekeeper (OPA Gatekeeper controller)
 ├── argo-rollouts (controller)
 ├── monitoring (kube-prometheus-stack)
 ├── web (Argo Rollout — canary)
-└── web-monitoring (ServiceMonitor + PrometheusRule + Grafana dashboard)
+├── web-monitoring (ServiceMonitor + PrometheusRule + Grafana dashboard)
+└── gatekeeper-policies (ConstraintTemplates + Constraints)
 ```
+
+See [`platform/README.md`](platform/README.md) for the Day A RBAC + admission runbook.
 
 ## Tech Stack
 
@@ -30,12 +35,19 @@ apps/
 ├── root.yaml                  # Bootstrap app-of-apps
 └── children/
     ├── kustomization.yaml
-    ├── namespace.yaml         # sync-wave -1
-    ├── project.yaml           # sync-wave 0
-    ├── argo-rollouts.yaml     # sync-wave 1
-    ├── monitoring.yaml        # sync-wave 1
-    ├── web.yaml               # sync-wave 2
-    └── web-monitoring.yaml    # sync-wave 3
+    ├── namespace.yaml           # sync-wave -1
+    ├── project.yaml             # sync-wave 0
+    ├── rbac.yaml                # sync-wave 1
+    ├── gatekeeper.yaml          # sync-wave 1
+    ├── argo-rollouts.yaml       # sync-wave 1
+    ├── monitoring.yaml          # sync-wave 1
+    ├── web.yaml                 # sync-wave 2
+    ├── web-monitoring.yaml      # sync-wave 3
+    └── gatekeeper-policies.yaml # sync-wave 4
+
+platform/                       # Day A — cluster guardrails
+├── rbac/                       # 3 personas (developer / sre / viewer)
+└── gatekeeper/                 # ConstraintTemplates + Constraints (dryrun)
 
 workloads/
 ├── web/

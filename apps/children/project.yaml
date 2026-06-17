@@ -11,6 +11,7 @@ spec:
     - https://github.com/pho-veteran/w10-gitops.git
     - https://github.com/argoproj/argo-rollouts.git
     - https://prometheus-community.github.io/helm-charts
+    - https://open-policy-agent.github.io/gatekeeper/charts
   destinations:
     - namespace: demo
       server: https://kubernetes.default.svc
@@ -21,6 +22,8 @@ spec:
     - namespace: argocd
       server: https://kubernetes.default.svc
     - namespace: argo-rollouts
+      server: https://kubernetes.default.svc
+    - namespace: gatekeeper-system
       server: https://kubernetes.default.svc
   clusterResourceWhitelist:
     - group: '*'

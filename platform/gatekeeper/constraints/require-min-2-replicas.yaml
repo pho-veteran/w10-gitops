@@ -1,0 +1,16 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sMinReplicas
+metadata:
+  name: require-min-2-replicas
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  enforcementAction: dryrun
+  match:
+    kinds:
+      - apiGroups: ["argoproj.io"]
+        kinds: ["Rollout"]
+    namespaces: ["demo"]
+  parameters:
+    min: 2

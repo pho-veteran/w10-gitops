@@ -3,7 +3,10 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - project.yaml
+  - rbac.yaml
+  - gatekeeper.yaml
   - monitoring.yaml
   - argo-rollouts.yaml
   - web.yaml
   - web-monitoring.yaml
+  - gatekeeper-policies.yaml

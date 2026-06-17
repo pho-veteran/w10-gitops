@@ -1,0 +1,28 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sminreplicas
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sMinReplicas
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            min:
+              type: integer
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sminreplicas
+
+        violation[{"msg": msg}] {
+          provided := input.review.object.spec.replicas
+          required := input.parameters.min
+          provided < required
+          msg := sprintf("%v <%v> has %v replica(s); minimum required is %v", [input.review.object.kind, input.review.object.metadata.name, provided, required])
+        }

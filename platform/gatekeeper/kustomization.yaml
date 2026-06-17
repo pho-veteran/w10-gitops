@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - templates/block-privileged-template.yaml
+  - templates/required-resources-template.yaml
+  - templates/require-runasnonroot-template.yaml
+  - templates/min-replicas-template.yaml
+  - constraints/deny-privileged.yaml
+  - constraints/require-requests-limits.yaml
+  - constraints/require-run-as-nonroot.yaml
+  - constraints/require-min-2-replicas.yaml
