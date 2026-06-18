@@ -19,8 +19,6 @@ spec:
       labels:
         app.kubernetes.io/name: web
         app.kubernetes.io/part-of: p2-w10-lab
-      annotations:
-        lab.xbrain.io/redeploy: "20260618-rds-ssl"
     spec:
       securityContext:
         runAsNonRoot: true
