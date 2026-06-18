@@ -1,10 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - templates/disallow-latest-tag-template.yaml
-  - templates/required-limits-template.yaml
-  - templates/disallow-root-user-template.yaml
-  - templates/disallow-hostnetwork-template.yaml
+  - https://github.com/open-policy-agent/gatekeeper-library//library/general/disallowedtags?ref=master
+  - https://github.com/open-policy-agent/gatekeeper-library//library/general/containerresources?ref=master
+  - https://github.com/open-policy-agent/gatekeeper-library//library/pod-security-policy/users?ref=master
+  - https://github.com/open-policy-agent/gatekeeper-library//library/pod-security-policy/host-network-ports?ref=master
   - templates/max-deployment-replicas-template.yaml
   - constraints/disallow-latest-tag.yaml
   - constraints/require-limits.yaml

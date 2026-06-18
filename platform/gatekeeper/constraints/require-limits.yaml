@@ -1,5 +1,5 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
-kind: K8sRequiredLimits
+kind: K8sRequiredResources
 metadata:
   name: require-limits
   annotations:
