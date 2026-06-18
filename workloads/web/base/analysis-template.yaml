@@ -19,7 +19,7 @@ spec:
         prometheus:
           address: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
           query: |
-            sum(rate(http_requests_total{namespace="demo",service="{{args.service-name}}",route!="/api/health",route!="/metrics"}[1m])) or vector(0)
+            sum(rate(http_requests_total{namespace="demo",service="{{args.service-name}}",route!="/metrics"}[1m])) or vector(0)
     - name: canary-error-rate
       interval: 30s
       count: 6
