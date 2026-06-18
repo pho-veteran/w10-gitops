@@ -11,6 +11,8 @@ resources:
   - external-secrets-rds.yaml
   - sigstore-policy-controller.yaml
   - sigstore-policies.yaml
+  - payments.yaml
   - web.yaml
   - web-monitoring.yaml
   - gatekeeper-policies.yaml
+  - payments-app.yaml

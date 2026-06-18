@@ -11,7 +11,9 @@ spec:
     kinds:
       - apiGroups: [""]
         kinds: ["Pod"]
-    namespaces: ["demo"]
+    namespaceSelector:
+      matchLabels:
+        app.kubernetes.io/part-of: p2-w10-lab
   parameters:
     runAsUser:
       rule: MustRunAsNonRoot

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: payments
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    app.kubernetes.io/name: payments
+    app.kubernetes.io/part-of: p2-w10-lab
+    app.kubernetes.io/managed-by: argocd
+    policy.sigstore.dev/include: "true"

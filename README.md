@@ -13,7 +13,9 @@ ArgoCD (app-of-apps)
 ├── monitoring (kube-prometheus-stack)
 ├── web (Argo Rollout — canary)
 ├── web-monitoring (ServiceMonitor + PrometheusRule + Grafana dashboard)
-└── gatekeeper-policies (ConstraintTemplates + Constraints)
+├── gatekeeper-policies (ConstraintTemplates + Constraints)
+├── payments-tenant (namespace / RBAC / quota / NetworkPolicy)
+└── payments-app (team B workload)
 ```
 
 See [`platform/README.md`](platform/README.md) for the Day A RBAC + admission runbook.
@@ -90,6 +92,15 @@ Both metrics exclude `/api/health` and `/metrics` endpoints.
   - Remaining error budget
   - Burn rate
   - Stable vs canary request rate comparison
+
+## Payments tenant challenge
+
+`payments` is onboarded as a second tenant with its own namespace, Role/RoleBinding, ResourceQuota, LimitRange, and NetworkPolicy.
+
+- Guardrails are inherited because the existing cluster-scoped Gatekeeper constraints match namespaces labeled `app.kubernetes.io/part-of=p2-w10-lab`; no tenant-specific constraints are needed.
+- `RoleBinding` grants `payments-dev` permissions only inside `payments`; `ClusterRoleBinding` is intentionally avoided because it would grant access across namespaces.
+- NetworkPolicy denies cross-namespace traffic and allows only same-namespace traffic plus DNS. Use a CNI that enforces NetworkPolicy.
+- Evidence capture guide for the morning lab, afternoon lab, and payments challenge lives in [`evidence/README.md`](evidence/README.md). Negative test manifests for the payments checks live in [`evidence/payments/`](evidence/payments/).
 
 ## Deployment
 

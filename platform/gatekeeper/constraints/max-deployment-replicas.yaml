@@ -11,6 +11,8 @@ spec:
     kinds:
       - apiGroups: ["apps"]
         kinds: ["Deployment"]
-    namespaces: ["demo"]
+    namespaceSelector:
+      matchLabels:
+        app.kubernetes.io/part-of: p2-w10-lab
   parameters:
     max: 5

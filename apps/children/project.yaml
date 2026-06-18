@@ -31,6 +31,8 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: cosign-system
       server: https://kubernetes.default.svc
+    - namespace: payments
+      server: https://kubernetes.default.svc
   clusterResourceWhitelist:
     - group: '*'
       kind: '*'

@@ -3,7 +3,7 @@ kind: ClusterImagePolicy
 metadata:
   name: require-signed-w10-web
 spec:
-  mode: warn
+  mode: enforce
   images:
     - glob: "docker.io/vihn/w10-web**"
     - glob: "index.docker.io/vihn/w10-web**"
