@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/pho-veteran/w10-gitops.git
     targetRevision: main
-    path: apps/payments
+    path: workloads/payments/overlays/lab
   destination:
     server: https://kubernetes.default.svc
     namespace: payments

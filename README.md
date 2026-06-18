@@ -111,7 +111,8 @@ All deployments are GitOps-driven — push to `main` and ArgoCD syncs automatica
 kubectl apply -f apps/root.yaml
 
 # Deploy a new image version
-# Update the image tag in workloads/web/overlays/lab/kustomization.yaml
+# Update the image ref in workload overlays (tag + digest)
+# e.g. workloads/web/overlays/lab/kustomization.yaml or workloads/payments/overlays/lab/kustomization.yaml
 # Commit and push — ArgoCD handles the rest
 ```
 

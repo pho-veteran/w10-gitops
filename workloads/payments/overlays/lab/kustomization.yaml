@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: payments
+resources:
+  - ../../base
+images:
+  - name: w10-web
+    newName: index.docker.io/vihn/w10-web
+    newTag: main-a82b52f
+    digest: sha256:e2b6c8c2be888d185e857fe638f08d47fbae8c76080069b88bc59ce2b01c8f3f
+labels:
+  - pairs:
+      app.kubernetes.io/environment: lab

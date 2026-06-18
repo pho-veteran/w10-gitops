@@ -6,7 +6,7 @@ Các guardrail ở cluster-level cho `w10-lab`, deploy qua ArgoCD app-of-apps:
 |--------------|---------------|------|----------|
 | `platform-rbac` | `platform/rbac` | 1 | 3 RBAC persona (developer / sre / viewer) trong ns `demo` |
 | `gatekeeper` | Helm `gatekeeper` 3.21.0 | 1 | OPA Gatekeeper controller trong ns `gatekeeper-system` |
-| `gatekeeper-policies` | `platform/gatekeeper` | 4 | 4 ConstraintTemplate + Constraint giới hạn trong ns `demo` |
+| `gatekeeper-policies` | `platform/gatekeeper` | 4 | ConstraintTemplate + Constraint áp vào các namespace mang label `app.kubernetes.io/part-of: p2-w10-lab` |
 
 ```
 platform/
@@ -52,64 +52,50 @@ kubectl auth can-i get    secrets     --as=system:serviceaccount:demo:viewer-sa 
 kubectl auth can-i --list --as=system:serviceaccount:demo:developer-sa -n demo
 ```
 
-## 2. Gatekeeper: 4 constraint (khởi đầu ở dryrun)
+## 2. Gatekeeper constraints
 
 | Constraint | Kind | Ràng buộc |
 |------------|------|-----------|
-| `deny-privileged` | `K8sBlockPrivileged` | không cho container `privileged: true` |
-| `require-requests-limits` | `K8sRequiredResources` | bắt buộc requests và limits cho cpu+memory |
-| `require-run-as-nonroot` | `K8sRequireRunAsNonRoot` | `runAsNonRoot: true` (ở pod hoặc container) |
-| `require-min-2-replicas` | `K8sMinReplicas` | Rollout `replicas >= 2` |
+| `disallow-latest-tag` | `K8sDisallowedTags` | chặn image dùng tag `latest` |
+| `require-limits` | `K8sRequiredResources` | bắt buộc `resources.limits` |
+| `disallow-root-user` | `K8sPSPAllowedUsers` | chặn chạy root user |
+| `disallow-hostnetwork` | `K8sPSPHostNetworkingPorts` | chặn `hostNetwork: true` |
+| `max-deployment-replicas` | `K8sMaxDeploymentReplicas` | Deployment không vượt quá `5` replicas |
 
-Tất cả khởi đầu ở `enforcementAction: dryrun`: audit trước, không bao giờ deny ngay ngày đầu.
+Các constraint hiện áp vào các namespace mang label `app.kubernetes.io/part-of: p2-w10-lab`, nên không chỉ `demo` mà cả `payments` cũng tự kế thừa cùng bộ guardrail.
 
-### Audit workload `web` đang chạy (dryrun)
+`enforcementAction` hiện ở trạng thái enforce/deny theo manifest live, nên manifest vi phạm sẽ bị chặn ngay ở admission.
 
-Trước khi remediate, Rollout `web` (chưa có securityContext, chưa có resources) vi phạm
-3 trong 4 constraint. Vòng audit nền của Gatekeeper (~60s) ghi lại:
+## 3. Verify nhanh các guardrail hiện tại
 
-```bash
-kubectl get k8srequiredresources   require-requests-limits -o jsonpath='{.status.totalViolations}'  # 1
-kubectl get k8srequirerunasnonroot require-run-as-nonroot  -o jsonpath='{.status.totalViolations}'  # 1
-kubectl get k8sminreplicas         require-min-2-replicas  -o jsonpath='{.status.totalViolations}'  # 0 (đã có 2 replicas)
-kubectl get k8sblockprivileged     deny-privileged         -o jsonpath='{.status.totalViolations}'  # 0
-
-kubectl describe k8srequiredresources require-requests-limits   # xem thông điệp vi phạm theo từng pod
-```
-
-> Rollout `web` vốn đã chạy `replicas: 2` nên `require-min-2-replicas` sạch ngay từ đầu;
-> hai vi phạm còn lại được xử lý ở phần remediate bên dưới.
-
-## 3. Remediate qua GitOps
-
-`workloads/web/base/rollout.yaml` đã được hardening: securityContext (runAsNonRoot, drop
-caps, readOnlyRootFilesystem kèm `/tmp` emptyDir) cùng requests/limits cho cpu/memory.
-Push lên, ArgoCD self-heal, rồi audit về 0:
+Có thể kiểm nhanh bộ policy live bằng các lệnh sau:
 
 ```bash
-kubectl get k8srequiredresources   require-requests-limits -o jsonpath='{.status.totalViolations}'  # 0
-kubectl get k8srequirerunasnonroot require-run-as-nonroot  -o jsonpath='{.status.totalViolations}'  # 0
+kubectl get k8sdisallowedtags
+kubectl get k8srequiredresources
+kubectl get k8spspallowedusers
+kubectl get k8spsphostnetworkingports
+kubectl get k8smaxdeploymentreplicas
+kubectl get k8smaxdeploymentreplicas max-deployment-replicas -o yaml
 ```
 
-## 4. Chuyển sang Enforce (deny): chỉ khi audit đã sạch
+Kỳ vọng:
 
-Khi mọi constraint báo 0 vi phạm, đổi `dryrun` thành `deny` rồi commit:
+- tất cả constraint đã tồn tại
+- `max-deployment-replicas` có `namespaceSelector` match label `app.kubernetes.io/part-of: p2-w10-lab`
+- manifest vi phạm sẽ bị chặn ngay tại admission
+
+Ví dụ kiểm chứng custom policy:
 
 ```bash
-# từ thư mục gốc repo
-sed -i 's/enforcementAction: dryrun/enforcementAction: deny/' platform/gatekeeper/constraints/*.yaml
-git commit -am "feat(day-a): enforce Gatekeeper constraints (dryrun -> deny)"
-git push origin main
+kubectl apply -f <deployment-replicas-6>.yaml   # reject
+kubectl apply -f <deployment-replicas-3>.yaml   # pass
 ```
 
-Kiểm chứng enforce từ chối manifest xấu ngay tại admission:
+## 4. Ý nghĩa với tenant mới như `payments`
 
-```bash
-kubectl run bad --image=nginx --privileged -n demo
-# Error from server (Forbidden): admission webhook "validation.gatekeeper.sh" denied the request:
-# [deny-privileged] Container bad is running privileged, which is prohibited!
-```
+Vì policy match theo label namespace chứ không match cứng riêng `demo`, nên namespace mới chỉ cần mang label `app.kubernetes.io/part-of: p2-w10-lab` là tự kế thừa cùng bộ Gatekeeper guardrail. Đây là lý do `payments` bị cùng rule set áp vào mà không cần viết thêm constraint mới.
 
-> ⚠️ Đừng chuyển sang `deny` khi audit chưa sạch: workload đang chạy thì vẫn sống, nhưng
-> mọi lần ArgoCD self-heal, rolling update hay scale một workload chưa đạt chuẩn đều bị
-> từ chối, khiến service kẹt không cập nhật được.
+Để chứng minh end-to-end, xem checklist nộp ở `../../README.md` và guide thao tác ngắn ở `../evidence/README.md`.
+
+> Lưu ý: `Role` + `RoleBinding` giữ quyền ở mức namespace; tránh dùng `ClusterRoleBinding` cho tenant app nếu không thật sự cần, vì rất dễ làm phạm vi quyền rộng quá mức cô lập mong muốn.

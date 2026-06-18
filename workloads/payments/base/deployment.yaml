@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: payments-api
-  namespace: payments
   labels:
     app.kubernetes.io/name: payments-api
     app.kubernetes.io/part-of: p2-w10-lab
@@ -29,7 +28,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: payments-api
-          image: vihn/w10-web:main-a82b52f
+          image: w10-web
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsNonRoot: true
