@@ -13,7 +13,7 @@ spec:
     - https://prometheus-community.github.io/helm-charts
     - https://open-policy-agent.github.io/gatekeeper/charts
     - https://charts.external-secrets.io
-    - https://github.com/sigstore/policy-controller.git
+    - https://sigstore.github.io/helm-charts
   destinations:
     - namespace: demo
       server: https://kubernetes.default.svc

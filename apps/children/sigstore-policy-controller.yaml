@@ -8,9 +8,15 @@ metadata:
 spec:
   project: w10-lab
   source:
-    repoURL: https://github.com/sigstore/policy-controller.git
-    targetRevision: v0.15.1
-    path: config
+    repoURL: https://sigstore.github.io/helm-charts
+    chart: policy-controller
+    targetRevision: 0.10.6
+    helm:
+      releaseName: policy-controller
+      values: |
+        installCRDs: true
+        webhook:
+          replicaCount: 1
   destination:
     server: https://kubernetes.default.svc
     namespace: cosign-system
