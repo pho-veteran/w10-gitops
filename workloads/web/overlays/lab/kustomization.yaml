@@ -6,7 +6,7 @@ resources:
 images:
 - name: w10-web
   newName: vihn/w10-web
-  newTag: main-412ff42
+  newTag: main-a82b52f
 labels:
 - pairs:
     app.kubernetes.io/environment: lab
