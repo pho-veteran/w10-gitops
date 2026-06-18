@@ -1,16 +1,16 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
-kind: K8sMinReplicas
+kind: K8sMaxDeploymentReplicas
 metadata:
-  name: require-min-2-replicas
+  name: max-deployment-replicas
   annotations:
     argocd.argoproj.io/sync-wave: "2"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
-  enforcementAction: dryrun
+  enforcementAction: deny
   match:
     kinds:
-      - apiGroups: ["argoproj.io"]
-        kinds: ["Rollout"]
+      - apiGroups: ["apps"]
+        kinds: ["Deployment"]
     namespaces: ["demo"]
   parameters:
-    min: 2
+    max: 5

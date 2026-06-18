@@ -1,12 +1,12 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
-kind: K8sRequireRunAsNonRoot
+kind: K8sDisallowHostNetwork
 metadata:
-  name: require-run-as-nonroot
+  name: disallow-hostnetwork
   annotations:
     argocd.argoproj.io/sync-wave: "2"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
-  enforcementAction: dryrun
+  enforcementAction: deny
   match:
     kinds:
       - apiGroups: [""]

@@ -6,6 +6,7 @@ metadata:
     app.kubernetes.io/name: web
     app.kubernetes.io/part-of: p2-w10-lab
     app.kubernetes.io/managed-by: argocd
+    owner: platform
 spec:
   replicas: 2
   revisionHistoryLimit: 3

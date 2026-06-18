@@ -1,17 +1,14 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
-kind: K8sRequiredResources
+kind: K8sDisallowRootUser
 metadata:
-  name: require-requests-limits
+  name: disallow-root-user
   annotations:
     argocd.argoproj.io/sync-wave: "2"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
-  enforcementAction: dryrun
+  enforcementAction: deny
   match:
     kinds:
       - apiGroups: [""]
         kinds: ["Pod"]
     namespaces: ["demo"]
-  parameters:
-    limits: ["cpu", "memory"]
-    requests: ["cpu", "memory"]

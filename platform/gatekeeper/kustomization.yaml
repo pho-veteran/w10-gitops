@@ -1,11 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - templates/block-privileged-template.yaml
-  - templates/required-resources-template.yaml
-  - templates/require-runasnonroot-template.yaml
-  - templates/min-replicas-template.yaml
-  - constraints/deny-privileged.yaml
-  - constraints/require-requests-limits.yaml
-  - constraints/require-run-as-nonroot.yaml
-  - constraints/require-min-2-replicas.yaml
+  - templates/disallow-latest-tag-template.yaml
+  - templates/required-limits-template.yaml
+  - templates/disallow-root-user-template.yaml
+  - templates/disallow-hostnetwork-template.yaml
+  - templates/max-deployment-replicas-template.yaml
+  - constraints/disallow-latest-tag.yaml
+  - constraints/require-limits.yaml
+  - constraints/disallow-root-user.yaml
+  - constraints/disallow-hostnetwork.yaml
+  - constraints/max-deployment-replicas.yaml

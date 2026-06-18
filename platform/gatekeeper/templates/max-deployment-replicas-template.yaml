@@ -1,28 +1,28 @@
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:
-  name: k8sminreplicas
+  name: k8smaxdeploymentreplicas
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
   crd:
     spec:
       names:
-        kind: K8sMinReplicas
+        kind: K8sMaxDeploymentReplicas
       validation:
         openAPIV3Schema:
           type: object
           properties:
-            min:
+            max:
               type: integer
   targets:
     - target: admission.k8s.gatekeeper.sh
       rego: |
-        package k8sminreplicas
+        package k8smaxdeploymentreplicas
 
         violation[{"msg": msg}] {
-          provided := input.review.object.spec.replicas
-          required := input.parameters.min
-          provided < required
-          msg := sprintf("%v <%v> has %v replica(s); minimum required is %v", [input.review.object.kind, input.review.object.metadata.name, provided, required])
+          replicas := input.review.object.spec.replicas
+          max := input.parameters.max
+          replicas > max
+          msg := sprintf("Deployment <%v> has %v replicas; maximum allowed is %v", [input.review.object.metadata.name, replicas, max])
         }

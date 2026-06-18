@@ -1,16 +1,27 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRole
 metadata:
-  namespace: demo
-  name: viewer-binding
+  name: viewer
+  labels:
+    app.kubernetes.io/part-of: p2-w10-lab
+    app.kubernetes.io/managed-by: argocd
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: viewer-carol
   labels:
     app.kubernetes.io/part-of: p2-w10-lab
     app.kubernetes.io/managed-by: argocd
 subjects:
-  - kind: ServiceAccount
-    name: viewer-sa
-    namespace: demo
+  - kind: User
+    name: carol
+    apiGroup: rbac.authorization.k8s.io
 roleRef:
   kind: ClusterRole
-  name: view
+  name: viewer
   apiGroup: rbac.authorization.k8s.io
