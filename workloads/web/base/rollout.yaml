@@ -47,6 +47,8 @@ spec:
               value: lab
             - name: NODE_PORT
               value: "30080"
+            - name: DB_SECRET_DIR
+              value: /etc/db-secret
           ports:
             - name: http
               containerPort: 3000
@@ -72,9 +74,16 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: db-secret
+              mountPath: /etc/db-secret
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
+        - name: db-secret
+          secret:
+            secretName: web-db-secret
+            optional: false
   strategy:
     canary:
       stableService: web

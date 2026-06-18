@@ -7,6 +7,10 @@ resources:
   - gatekeeper.yaml
   - monitoring.yaml
   - argo-rollouts.yaml
+  - external-secrets.yaml
+  - external-secrets-rds.yaml
+  - sigstore-policy-controller.yaml
+  - sigstore-policies.yaml
   - web.yaml
   - web-monitoring.yaml
   - gatekeeper-policies.yaml

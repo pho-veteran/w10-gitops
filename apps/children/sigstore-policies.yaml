@@ -1,22 +1,23 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: web
+  name: sigstore-policies
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "4"
 spec:
   project: w10-lab
   source:
     repoURL: https://github.com/pho-veteran/w10-gitops.git
     targetRevision: main
-    path: workloads/web/overlays/lab
+    path: platform/sigstore
   destination:
     server: https://kubernetes.default.svc
-    namespace: demo
+    namespace: cosign-system
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true

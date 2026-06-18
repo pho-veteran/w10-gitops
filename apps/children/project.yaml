@@ -12,6 +12,8 @@ spec:
     - https://github.com/argoproj/argo-rollouts.git
     - https://prometheus-community.github.io/helm-charts
     - https://open-policy-agent.github.io/gatekeeper/charts
+    - https://charts.external-secrets.io
+    - https://github.com/sigstore/policy-controller.git
   destinations:
     - namespace: demo
       server: https://kubernetes.default.svc
@@ -24,6 +26,10 @@ spec:
     - namespace: argo-rollouts
       server: https://kubernetes.default.svc
     - namespace: gatekeeper-system
+      server: https://kubernetes.default.svc
+    - namespace: external-secrets
+      server: https://kubernetes.default.svc
+    - namespace: cosign-system
       server: https://kubernetes.default.svc
   clusterResourceWhitelist:
     - group: '*'

@@ -1,22 +1,23 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: web
+  name: sigstore-policy-controller
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: w10-lab
   source:
-    repoURL: https://github.com/pho-veteran/w10-gitops.git
-    targetRevision: main
-    path: workloads/web/overlays/lab
+    repoURL: https://github.com/sigstore/policy-controller.git
+    targetRevision: v0.15.1
+    path: config
   destination:
     server: https://kubernetes.default.svc
-    namespace: demo
+    namespace: cosign-system
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
