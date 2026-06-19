@@ -74,21 +74,28 @@ Cần thấy constraints đang match namespace theo label:
 
 ### 1.4. Admission reject cases
 
-Capture các case tối thiểu:
-
-1. image dùng `:latest`
-2. thiếu `resources.limits`
-3. chạy root user / vi phạm non-root rule
-4. bật `hostNetwork: true`
+```bash
+kubectl apply -f evidence/day-a/bad-latest.yaml
+kubectl apply -f evidence/day-a/bad-no-limits.yaml
+kubectl apply -f evidence/day-a/bad-root.yaml
+kubectl apply -f evidence/day-a/bad-hostnetwork.yaml
+```
 
 Kỳ vọng: admission `deny`, lỗi hiện rõ tên constraint hoặc lý do.
 
 ### 1.5. Valid pass + custom policy
 
-- 1 manifest hợp lệ phải pass
-- Custom policy hiện tại là `max-deployment-replicas`
-  - `replicas: 6` → reject
-  - `replicas: 3` → pass
+```bash
+kubectl apply -f evidence/day-a/good-pod.yaml
+kubectl get pod -n demo
+
+kubectl apply -f evidence/day-a/deployment-replicas-6.yaml
+kubectl apply -f evidence/day-a/deployment-replicas-3.yaml
+```
+
+- `good-pod.yaml` → pass
+- `deployment-replicas-6.yaml` → reject
+- `deployment-replicas-3.yaml` → pass
 
 ### 1.6. Post-enforce health
 

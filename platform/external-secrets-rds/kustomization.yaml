@@ -9,7 +9,7 @@ generatorOptions:
 configMapGenerator:
   - name: rds-managed-secret-ref
     literals:
-      - secretArn=arn:aws:secretsmanager:ap-southeast-1:193229476041:secret:p2-w10-lab-lab/rds-dvnhdP
+      - secretArn=arn:aws:secretsmanager:ap-southeast-1:193229476041:secret:p2-w10-lab-lab/rds-LnIe4O
 replacements:
   - source:
       kind: ConfigMap
