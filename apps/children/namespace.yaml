@@ -8,3 +8,4 @@ metadata:
     app.kubernetes.io/name: demo
     app.kubernetes.io/part-of: p2-w10-lab
     app.kubernetes.io/managed-by: argocd
+    policy.sigstore.dev/include: "true"

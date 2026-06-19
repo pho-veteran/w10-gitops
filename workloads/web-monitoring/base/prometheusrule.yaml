@@ -4,7 +4,7 @@ metadata:
   name: web-slo
   labels:
     app.kubernetes.io/name: web
-    app.kubernetes.io/part-of: p2-w10-la
+    app.kubernetes.io/part-of: p2-w10-lab
 spec:
   groups:
     - name: web.canary
