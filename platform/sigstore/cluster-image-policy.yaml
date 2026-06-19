@@ -9,7 +9,9 @@ spec:
     - glob: "index.docker.io/vihn/w10-web**"
     - glob: "vihn/w10-web**"
   authorities:
-    - keyless:
+    - name: authority-0
+      keyless:
+        url: "https://fulcio.sigstore.dev"
         identities:
           - issuer: "https://token.actions.githubusercontent.com"
             subject: "https://github.com/pho-veteran/w10-app/.github/workflows/ci.yml@refs/heads/main"
